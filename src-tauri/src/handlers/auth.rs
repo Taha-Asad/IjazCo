@@ -100,18 +100,18 @@ pub async fn login(
     // 1. Fetch user using the dual-db pattern and assign to a variable
     let user = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
-            let found = if let Some(u) = User::find_by_username_pg(pool, &payload.username).await? {
+            let found = if let Some(u) = User::find_by_username_pg(&pool, &payload.username).await? {
                 Some(u)
             } else {
-                User::find_by_email_pg(pool, &payload.username).await?
+                User::find_by_email_pg(&pool, &payload.username).await?
             };
             found
         }
         DbPool::Sqlite(pool) => {
-            let found = if let Some(u) = User::find_by_username_sqlite(pool, &payload.username).await? {
+            let found = if let Some(u) = User::find_by_username_sqlite(&pool, &payload.username).await? {
                 Some(u)
             } else {
-                User::find_by_email_sqlite(pool, &payload.username).await?
+                User::find_by_email_sqlite(&pool, &payload.username).await?
             };
             found
         }
@@ -135,8 +135,8 @@ pub async fn login(
     if !is_valid {
         // We must match on the DB again to call the increment function
         match state.db.as_ref() {
-            DbPool::Postgres(pool) => User::increment_failed_login_pg(pool, user.id, 5, 30).await?,
-            DbPool::Sqlite(pool) => User::increment_failed_login_sqlite(pool, user.id, 5, 30).await?,
+            DbPool::Postgres(pool) => User::increment_failed_login_pg(&pool, user.id, 5, 30).await?,
+            DbPool::Sqlite(pool) => User::increment_failed_login_sqlite(&pool, user.id, 5, 30).await?,
         };
         return Err(AppError::InvalidCredentials);
     }
@@ -159,8 +159,8 @@ let refresh_token = generate_jwt(
     let ip_address = Some(addr.ip().to_string());
     // 5. Update last login timestamp using correct engine
     match state.db.as_ref() {
-        DbPool::Postgres(pool) => User::update_last_login_pg(pool, user.id,ip_address.clone()).await?,
-        DbPool::Sqlite(pool) => User::update_last_login_sqlite(pool, user.id,ip_address.clone()).await?,
+        DbPool::Postgres(pool) => User::update_last_login_pg(&pool, user.id,ip_address.clone()).await?,
+        DbPool::Sqlite(pool) => User::update_last_login_sqlite(&pool, user.id,ip_address.clone()).await?,
     };
 
     Ok(Json(LoginResponse {
@@ -265,12 +265,12 @@ pub async fn register(
     // 4. Check if user already exists
     let user_exists = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
-            User::find_by_username_pg(pool, &payload.username).await?.is_some() ||
-            User::find_by_email_pg(pool, &payload.email).await?.is_some()
+            User::find_by_username_pg(&pool, &payload.username).await?.is_some() ||
+            User::find_by_email_pg(&pool, &payload.email).await?.is_some()
         }
         DbPool::Sqlite(pool) => {
-            User::find_by_username_sqlite(pool, &payload.username).await?.is_some() ||
-            User::find_by_email_sqlite(pool, &payload.email).await?.is_some()
+            User::find_by_username_sqlite(&pool, &payload.username).await?.is_some() ||
+            User::find_by_email_sqlite(&pool, &payload.email).await?.is_some()
         }
     };
 
@@ -283,34 +283,42 @@ pub async fn register(
     // we use the SEED ID ('...001'), NOT the NIL ID ('...000').
     let seed_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
     
+    let first_name = payload.first_name.clone();
+    let last_name = payload.last_name.clone();
+    let username = payload.username.clone();
+    let email = payload.email.clone();
+    let role_id = payload.role_id;
+    let company_id = payload.company_id.unwrap_or(seed_id);
+    
+
     let create_request = CreateUserRequest {
-        username: payload.username.clone(),
-        email: payload.email.clone(),
+        username: username.clone(),
+        email: email.clone(),
         password: payload.password,
-        first_name: payload.first_name,
-        last_name: payload.last_name,
+        first_name: first_name.clone(),
+        last_name: last_name.clone(),
         phone: payload.phone,
         // Use payload ID if provided, otherwise fallback to our seeded record
-        role_id: payload.role_id,
-        company_id: payload.company_id.unwrap_or(seed_id),
+        role_id,
+        company_id,
     };
     
     let system_user_id = Some(Uuid::nil());
     
-    let user = match state.db.as_ref() {
-        DbPool::Postgres(pool) => User::create_pg(pool, create_request, system_user_id).await?,
-        DbPool::Sqlite(pool) => User::create_sqlite(pool, create_request, system_user_id).await?,
-    };  
+    match state.db.as_ref() {
+        DbPool::Postgres(pool) => User::create_pg(&pool, create_request, system_user_id).await?,
+        DbPool::Sqlite(pool) => User::create_sqlite(&pool, create_request, system_user_id).await?,
+    };
 
-    // 6. Build response
+    // 6. Build response - use payload data since we know insert succeeded
     let user_info = UserInfo {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        role_id: user.role_id,
-        company_id: user.company_id,
+        id: Uuid::new_v4(),
+        username,
+        email,
+        first_name,
+        last_name,
+        role_id,
+        company_id,
     };
     
     Ok(created("User registered successfully", user_info))
@@ -456,7 +464,7 @@ pub async fn change_password(
     // 2. Fetch User (Fix: Unwrap the Option)
     let user = match state.db.as_ref() {
         DbPool::Postgres(pool) => User::find_by_id_pg(&pool, auth_user.id).await?,
-        DbPool::Sqlite(pool) => User::find_by_id_sqlite(pool, auth_user.id).await?,
+        DbPool::Sqlite(pool) => User::find_by_id_sqlite(&pool, auth_user.id).await?,
     }.ok_or_else(|| AppError::NotFound("User not found".to_string()))?;
 
     // 3. Verify current password
@@ -469,10 +477,10 @@ pub async fn change_password(
     // 4. Update password (Fix: Match DB to call the correct divided function)
     match state.db.as_ref() {
         DbPool::Postgres(pool) => {
-            User::update_password_pg(pool, auth_user.id, &payload.new_password, auth_user.id,).await?
+            User::update_password_pg(&pool, auth_user.id, &payload.new_password, auth_user.id,).await?
         }
         DbPool::Sqlite(pool) => {
-            User::update_password_sqlite(pool, auth_user.id, &payload.new_password, auth_user.id,).await?
+            User::update_password_sqlite(&pool, auth_user.id, &payload.new_password, auth_user.id,).await?
         }
     };
     

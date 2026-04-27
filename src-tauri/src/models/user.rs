@@ -258,19 +258,30 @@ impl User {
 
 // inside src/models/user.rs
 
-    pub async fn create_sqlite(
+pub async fn create_sqlite(
         pool: &SqlitePool,
         request: CreateUserRequest,
         created_by: Option<Uuid>
     ) -> Result<User, sqlx::Error> {
-        let password_hash = crate::utils::password
-            ::hash_password(&request.password)
+        let password_hash = crate::utils::password::hash_password(&request.password)
             .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
-
-        // Generate the new UUID in Rust
+        
         let new_id = Uuid::new_v4();
+        
+        // Convert to strings explicitly for SQLite TEXT columns  
+        let company_id_str = request.company_id.to_string();
+        let role_id_str = request.role_id.to_string();
+        
+        // Use a transaction 
+        let mut tx = pool.begin().await?;
+        
+        // Enable FK in this transaction's connection
+        sqlx::query("PRAGMA foreign_keys = ON")
+            .execute(&mut *tx)
+            .await?;
 
-        let user = sqlx::query_as::<Sqlite, User>(
+        // Insert with explicit strings
+        sqlx::query(
             r#"
             INSERT INTO users (
                 id, company_id, role_id, username, email, password_hash,
@@ -279,29 +290,58 @@ impl User {
                 created_by, updated_by
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            RETURNING *
             "#
         )
-        .bind(new_id) // Bind the ID here
-        .bind(request.company_id)
-        .bind(request.role_id)
-        .bind(request.username)
-        .bind(request.email)
-        .bind(password_hash)
-        .bind(request.first_name)
-        .bind(request.last_name)
-        .bind(request.phone)
-        .bind(UserStatus::Pending)
+        .bind(new_id.to_string())
+        .bind(&company_id_str)
+        .bind(&role_id_str)
+        .bind(&request.username)
+        .bind(&request.email)
+        .bind(&password_hash)
+        .bind(&request.first_name)
+        .bind(&request.last_name)
+        .bind(&request.phone)
+        .bind("pending")
         .bind(false)
         .bind(0)
         .bind(false)
         .bind(serde_json::json!({}))
-        .bind(created_by)
-        .bind(created_by)
-        .fetch_one(pool)
+        .bind(&created_by.map(|u| u.to_string()))
+        .bind(&created_by.map(|u| u.to_string()))
+        .execute(&mut *tx)
         .await?;
-
-        Ok(user)
+        
+        tx.commit().await?;
+        
+        Ok(User {
+            id: new_id,
+            company_id: request.company_id,
+            role_id: request.role_id,
+            username: request.username,
+            email: request.email,
+            password_hash,
+            first_name: request.first_name,
+            last_name: request.last_name,
+            phone: request.phone,
+            avatar_url: None,
+            status: UserStatus::Pending,
+            is_email_verified: false,
+            email_verified_at: None,
+            last_login_at: None,
+            last_login_ip: None,
+            failed_login_attempts: 0,
+            locked_until: None,
+            password_reset_token: None,
+            password_reset_expires_at: None,
+            two_factor_enabled: false,
+            two_factor_secret: None,
+            preferences: serde_json::json!({}),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            created_by,
+            updated_by: None,
+            deleted_at: None,
+        })
     }
 
     pub async fn create_pg(

@@ -47,10 +47,10 @@ pub async fn list_categories(
     
     let categories = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
-            Category::list_by_company_pg(pool, auth_user.company_id, false).await?
+            Category::list_by_company_pg(&pool, auth_user.company_id, false).await?
         }
         DbPool::Sqlite(pool) => {
-            Category::list_by_company_sqlite(pool, auth_user.company_id, false).await?
+            Category::list_by_company_sqlite(&pool, auth_user.company_id, false).await?
         }
     };
     
@@ -91,8 +91,8 @@ pub async fn get_category(
     );
     
     let category = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Category::find_by_id_pg(pool, id).await?,
-        DbPool::Sqlite(pool) => Category::find_by_id_sqlite(pool, id).await?,
+        DbPool::Postgres(pool) => Category::find_by_id_pg(&pool, id).await?,
+        DbPool::Sqlite(pool) => Category::find_by_id_sqlite(&pool, id).await?,
     }
     .ok_or_else(|| AppError::NotFound("Category not found".to_string()))?;
     
@@ -143,10 +143,10 @@ pub async fn create_category(
     if let Some(parent_id) = payload.parent_id {
         let parent_exists = match state.db.as_ref() {
             DbPool::Postgres(pool) => {
-                Category::find_by_id_pg(pool, parent_id).await?.is_some()
+                Category::find_by_id_pg(&pool, parent_id).await?.is_some()
             }
             DbPool::Sqlite(pool) => {
-                Category::find_by_id_sqlite(pool, parent_id).await?.is_some()
+                Category::find_by_id_sqlite(&pool, parent_id).await?.is_some()
             }
         };
         
@@ -156,8 +156,8 @@ pub async fn create_category(
     }
     
     let category = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Category::create_pg(pool, payload, auth_user.id).await?,
-        DbPool::Sqlite(pool) => Category::create_sqlite(pool, payload, auth_user.id).await?,
+        DbPool::Postgres(pool) => Category::create_pg(&pool, payload, auth_user.id).await?,
+        DbPool::Sqlite(pool) => Category::create_sqlite(&pool, payload, auth_user.id).await?,
     };
     
     tracing::info!(
@@ -204,8 +204,8 @@ pub async fn update_category(
     );
     
     let existing_category = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Category::find_by_id_pg(pool, id).await?,
-        DbPool::Sqlite(pool) => Category::find_by_id_sqlite(pool, id).await?,
+        DbPool::Postgres(pool) => Category::find_by_id_pg(&pool, id).await?,
+        DbPool::Sqlite(pool) => Category::find_by_id_sqlite(&pool, id).await?,
     }
     .ok_or_else(|| AppError::NotFound("Category not found".to_string()))?;
     
@@ -221,7 +221,7 @@ pub async fn update_category(
     
     let updated_category = match state.db.as_ref() {
         DbPool::Postgres(pool) => Category::update_pg(&pool, id, payload, auth_user.id).await?,
-        DbPool::Sqlite(pool) => Category::update_sqlite(pool, id, payload, auth_user.id).await?,
+        DbPool::Sqlite(pool) => Category::update_sqlite(&pool, id, payload, auth_user.id).await?,
     };
     
     tracing::info!(
@@ -262,8 +262,8 @@ pub async fn delete_category(
     );
     
     let category = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Category::find_by_id_pg(pool, id).await?,
-        DbPool::Sqlite(pool) => Category::find_by_id_sqlite(pool, id).await?,
+        DbPool::Postgres(pool) => Category::find_by_id_pg(&pool, id).await?,
+        DbPool::Sqlite(pool) => Category::find_by_id_sqlite(&pool, id).await?,
     }
     .ok_or_else(|| AppError::NotFound("Category not found".to_string()))?;
     
@@ -271,8 +271,8 @@ pub async fn delete_category(
     
     // Check for subcategories
     let subcategory_count = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Category::count_subcategories_pg(pool, id).await?,
-        DbPool::Sqlite(pool) => Category::count_subcategories_sqlite(pool, id).await?,
+        DbPool::Postgres(pool) => Category::count_subcategories_pg(&pool, id).await?,
+        DbPool::Sqlite(pool) => Category::count_subcategories_sqlite(&pool, id).await?,
     };
     
     if subcategory_count > 0 {
@@ -283,8 +283,8 @@ pub async fn delete_category(
     
     // Check for items in this category
     let items_count = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Category::count_items_pg(pool, id).await?,
-        DbPool::Sqlite(pool) => Category::count_items_sqlite(pool, id).await?,
+        DbPool::Postgres(pool) => Category::count_items_pg(&pool, id).await?,
+        DbPool::Sqlite(pool) => Category::count_items_sqlite(&pool, id).await?,
     };
     
     if items_count > 0 {
@@ -294,8 +294,8 @@ pub async fn delete_category(
     }
     
     match state.db.as_ref() {
-        DbPool::Postgres(pool) => Category::delete_pg(pool, id).await?,
-        DbPool::Sqlite(pool) => Category::delete_sqlite(pool, id).await?,
+        DbPool::Postgres(pool) => Category::delete_pg(&pool, id).await?,
+        DbPool::Sqlite(pool) => Category::delete_sqlite(&pool, id).await?,
     };
     
     tracing::info!(

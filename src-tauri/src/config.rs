@@ -1,15 +1,13 @@
 // src/config.rs
-use sqlx::{PgPool, SqlitePool};
+use sqlx::{PgPool, Sqlite, SqlitePool};
 use std::sync::Arc;
-use serde::Deserialize;
-
 #[derive(Clone)]
 pub enum DbPool {
     Postgres(PgPool),
     Sqlite(SqlitePool),
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct AppConfig {
     pub env: String,
     pub jwt_secret: String,
@@ -55,7 +53,14 @@ impl AppState {
                 .await
                 .expect(&format!("Failed to connect to SQLite at: {}", config.sqlite_database_url));
             println!("SQLite connected successfully");
-            sqlx::query("PRAGMA foreign_keys = ON;").execute(&pool).await.expect("Failed to enable foreign keys in SQLite");
+            
+            // Test execute a simple query to verify connection works (also verifies FK is enabled via after_connect)
+            let _test = sqlx::query("SELECT 1").fetch_one(&pool).await.unwrap();
+            
+            // Verify foreign keys is enabled
+            let row: (i32,) = sqlx::query_as::<Sqlite, _>("PRAGMA foreign_keys").fetch_one(&pool).await.unwrap();
+            println!("Foreign keys enabled: {}", row.0);
+            
             DbPool::Sqlite(pool)
             
         };
@@ -68,14 +73,14 @@ impl AppState {
 
     pub fn pg(&self) -> Option<&PgPool> {
         match self.db.as_ref() {
-            DbPool::Postgres(pool) => Some(pool),
+            DbPool::Postgres(pool) => Some(&pool),
             _ => None,
         }
     }
 
     pub fn sqlite(&self) -> Option<&SqlitePool> {
         match self.db.as_ref() {
-            DbPool::Sqlite(pool) => Some(pool),
+            DbPool::Sqlite(pool) => Some(&pool),
             _ => None,
         }
     }

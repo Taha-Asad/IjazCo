@@ -17,8 +17,8 @@ pub async fn get_company(
     Path(id): Path<Uuid>,
 ) -> Result<Json<Company>> {
     let company = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Company::find_by_id_pg(pool, id).await?,
-        DbPool::Sqlite(pool) => Company::find_by_id_sqlite(pool, id).await?,
+        DbPool::Postgres(pool) => Company::find_by_id_pg(&pool, id).await?,
+        DbPool::Sqlite(pool) => Company::find_by_id_sqlite(&pool, id).await?,
     }
     .ok_or_else(|| AppError::NotFound("Company not found".to_string()))?;
 
@@ -33,8 +33,8 @@ pub async fn create_company(
     payload.validate().map_err(|e| AppError::ValidationError(e.to_string()))?;
 
     let company = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Company::create_pg(pool, payload, auth_user.id).await?,
-        DbPool::Sqlite(pool) => Company::create_sqlite(pool, payload, auth_user.id).await?,
+        DbPool::Postgres(pool) => Company::create_pg(&pool, payload, auth_user.id).await?,
+        DbPool::Sqlite(pool) => Company::create_sqlite(&pool, payload, auth_user.id).await?,
     };
 
     Ok(created("Company created", company))

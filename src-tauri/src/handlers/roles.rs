@@ -52,11 +52,11 @@ pub async fn list_roles(
     let roles = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
             // SaaS / Production Cloud Branch
-            Role::list_by_company_pg(pool, auth_user.company_id).await?
+            Role::list_by_company_pg(&pool, auth_user.company_id).await?
         }
         DbPool::Sqlite(pool) => {
             // Desktop / Offline-First Branch [cite: 7, 37]
-            Role::list_by_company_sqlite(pool, auth_user.company_id).await?
+            Role::list_by_company_sqlite(&pool, auth_user.company_id).await?
         }
     };
     tracing::debug!(
@@ -108,11 +108,11 @@ pub async fn get_role(
     let role_option = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
             // SaaS / Production Cloud Branch
-            Role::find_by_id_pg(pool, id).await?
+            Role::find_by_id_pg(&pool, id).await?
         }
         DbPool::Sqlite(pool) => {
             // Desktop / Offline-First Branch [cite: 7, 37]
-            Role::find_by_id_sqlite(pool, id).await?
+            Role::find_by_id_sqlite(&pool, id).await?
         }
     };
 
@@ -170,11 +170,11 @@ pub async fn create_role(
     let role = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
             // SaaS / Production Cloud Branch
-            Role::create_pg(pool, payload , auth_user.id).await?
+            Role::create_pg(&pool, payload , auth_user.id).await?
         }
         DbPool::Sqlite(pool) => {
             // Desktop / Offline-First Branch [cite: 7, 37] 
-            Role::create_sqlite(pool, payload, auth_user.id).await?
+            Role::create_sqlite(&pool, payload, auth_user.id).await?
         }
     };    
     // Create role
@@ -228,11 +228,11 @@ pub async fn update_role(
     let existing_role = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
             // SaaS / Production Cloud Branch
-            Role::find_by_id_pg(pool, id).await?
+            Role::find_by_id_pg(&pool, id).await?
         }
         DbPool::Sqlite(pool) => {
             // Desktop / Offline-First Branch [cite: 7, 37]
-            Role::find_by_id_sqlite(pool, id).await?
+            Role::find_by_id_sqlite(&pool, id).await?
         }
     };    
     // Fetch existing role
@@ -252,11 +252,11 @@ pub async fn update_role(
         let updated_role = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
             // SaaS / Production Cloud Branch
-            Role::update_pg(pool, id, payload, auth_user.id).await?
+            Role::update_pg(&pool, id, payload, auth_user.id).await?
         }
         DbPool::Sqlite(pool) => {
             // Desktop / Offline-First Branch [cite: 7, 37]
-            Role::update_sqlite(pool, id, payload, auth_user.id).await?
+            Role::update_sqlite(&pool, id, payload, auth_user.id).await?
         }
     };    
     
@@ -303,8 +303,8 @@ pub async fn delete_role(
     // Get database pool
 // 1. Fetch role to verify existence and company ownership
     let role_option = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Role::find_by_id_pg(pool, id).await?,
-        DbPool::Sqlite(pool) => Role::find_by_id_sqlite(pool, id).await?,
+        DbPool::Postgres(pool) => Role::find_by_id_pg(&pool, id).await?,
+        DbPool::Sqlite(pool) => Role::find_by_id_sqlite(&pool, id).await?,
     };
 
     let role = role_option.ok_or_else(|| AppError::NotFound("Role not found".to_string()))?;
@@ -320,10 +320,10 @@ pub async fn delete_role(
     // 4. Divided Delete Execution
     match state.db.as_ref() {
         DbPool::Postgres(pool) => {
-            Role::delete_pg(pool, id).await?;
+            Role::delete_pg(&pool, id).await?;
         }
         DbPool::Sqlite(pool) => {
-            Role::delete_sqlite(pool, id).await?;
+            Role::delete_sqlite(&pool, id).await?;
         }
     }
 
@@ -369,11 +369,11 @@ pub async fn get_role_permissions(
     let role_option = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
             // SaaS / Production Cloud Branch
-            Role::find_by_id_pg(pool, id).await?
+            Role::find_by_id_pg(&pool, id).await?
         }
         DbPool::Sqlite(pool) => {
             // Desktop / Offline-First Branch [cite: 7, 37]
-            Role::find_by_id_sqlite(pool, id).await?
+            Role::find_by_id_sqlite(&pool, id).await?
         }
     };
                 let role = role_option.ok_or_else(|| {
@@ -430,8 +430,8 @@ pub async fn update_role_permissions(
     
     // 1. Fetch existing role using dual-db branching
     let role_option = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Role::find_by_id_pg(pool, id).await?,
-        DbPool::Sqlite(pool) => Role::find_by_id_sqlite(pool, id).await?,
+        DbPool::Postgres(pool) => Role::find_by_id_pg(&pool, id).await?,
+        DbPool::Sqlite(pool) => Role::find_by_id_sqlite(&pool, id).await?,
     };
 
     let role = role_option.ok_or_else(|| {
@@ -457,10 +457,10 @@ pub async fn update_role_permissions(
     // 5. Execute Update using divided functions
     let updated_role = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
-            Role::update_pg(pool, id, update_request, auth_user.id).await?
+            Role::update_pg(&pool, id, update_request, auth_user.id).await?
         }
         DbPool::Sqlite(pool) => {
-            Role::update_sqlite(pool, id, update_request, auth_user.id).await?
+            Role::update_sqlite(&pool, id, update_request, auth_user.id).await?
         }
     };    
 
