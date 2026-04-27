@@ -1,0 +1,77 @@
+# .github/workflows/ci.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+  DATABASE_URL: "sqlite::memory:"
+  RUST_LOG: debug
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      # Optional: Run PostgreSQL for integration tests if needed
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: erp_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo Registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install SQLx CLI
+        run: cargo install sqlx-cli --no-default-features --features postgres sqlite
+
+      - name: Run Migrations (SQLite)
+        run: "sqlx migrate run --database-url sqlite::memory:"
+        continue-on-error: true # Memory DB might need different handling
+
+      - name: Check Format
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run Tests
+        run: cargo test --verbose
+        env:
+          DATABASE_URL: "sqlite::memory:"
+          JWT_SECRET: test_secret_key_for_ci
+
+      - name: Build Release
+        run: cargo build --release
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: erp-backend
+          path: target/release/erp_backend

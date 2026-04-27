@@ -1,0 +1,182 @@
+[package]
+name = "tauri-app"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "tauri_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[features]
+default = ["sqlite"] # Set sqlite as default for prototype
+# default = ["postgres"]  # Use this for production
+sqlite = ["sqlx/sqlite"]
+postgres = ["sqlx/postgres"]
+
+[dependencies]
+# ===== WEB FRAMEWORK =====
+# Axum - High-performance, ergonomic web framework built on Tokio
+axum = { version = "0.7.3", features = [
+    "macros",
+    "multipart",
+] } # Latest stable with macro support for routing
+# Tower - Modular middleware for building robust networked applications
+tower = { version = "0.4.13", features = [
+    "full",
+] } # Full feature set for comprehensive middleware
+# Tower-HTTP - HTTP-specific middleware (CORS, compression, tracing)
+tower-http = { version = "0.5.0", features = [
+    "fs",
+    "trace",
+    "cors",
+    "compression-full",
+] }
+
+# ===== ASYNC RUNTIME =====
+# Tokio - Asynchronous runtime for Rust, enabling concurrent operations
+tokio = { version = "1.35.1", features = [
+    "full",
+] } # Full features for complete async support
+
+# ===== DATABASE =====
+# SQLx - Async, pure Rust SQL toolkit with compile-time query verification
+sqlx = { version = "0.7.3", features = [
+    "runtime-tokio-rustls", # Tokio runtime with rustls for TLS
+    "any",                  # Support for multiple databases (PostgreSQL, SQLite, MySQL)
+    "postgres",             # PostgreSQL driver for production
+    "sqlite",               # SQLite for local/offline mode
+    "macros",               # Compile-time query checking
+    "migrate",              # Built-in migration support
+    "uuid",                 # UUID type support
+    "chrono",               # Date/time support
+    "json",                 # JSON column support
+    "bigdecimal",           # BigDecimal support for financial data
+    "runtime-tokio",
+    "rust_decimal",         # Critical for Decimal support
+] }
+
+# ===== SERIALIZATION =====
+# Serde - Serialization/deserialization framework for Rust
+serde = { version = "1.0.195", features = [
+    "derive",
+] } # Derive macros for automatic implementation
+# Serde JSON - JSON support for API responses
+serde_json = "1.0.111" # Latest stable for JSON parsing/generation
+
+# ===== AUTHENTICATION & SECURITY =====
+# Argon2 - State-of-the-art password hashing algorithm (winner of Password Hashing Competition)
+argon2 = "0.5.3" # Memory-hard hashing to resist brute-force attacks
+# jsonwebtoken - JWT creation and validation for stateless authentication
+jsonwebtoken = "9.2.0" # Latest stable for secure token management
+# bcrypt - Alternative password hashing (fallback option)
+bcrypt = "0.15.0" # Industry-standard password hashing
+
+# ===== VALIDATION =====
+# Validator - Struct-level validation with derive macros
+
+# ===== UUID GENERATION =====
+# UUID - Universally Unique Identifier generation for primary keys
+uuid = { version = "1.6.1", features = [
+    "v4",
+    "serde",
+] } # v4 for random UUIDs, serde for serialization
+
+# ===== DATE/TIME =====
+# Chrono - Date and time library for Rust
+chrono = { version = "0.4.31", features = [
+    "serde",
+] } # Timezone-aware timestamps
+
+# ===== LOGGING & TRACING =====
+# Tracing - Application-level tracing for debugging and monitoring
+tracing = "0.1.40" # Structured logging with spans and events
+# Tracing-subscriber - Utilities for tracing subscribers
+tracing-subscriber = { version = "0.3.18", features = [
+    "env-filter",
+    "json",
+] } # JSON logging for production
+
+# ===== ENVIRONMENT CONFIGURATION =====
+# Dotenv - Load environment variables from .env file
+dotenvy = "0.15.7" # Secure configuration management
+
+# ===== ERROR HANDLING =====
+# Thiserror - Ergonomic error handling with derive macros
+thiserror = "1.0.56" # Custom error types with automatic Display implementation
+# Anyhow - Flexible error handling for applications
+anyhow = "1.0.79" # Error context and backtrace support
+
+# ===== HTTP CLIENT (for external API calls) =====
+# Reqwest - HTTP client for making API requests
+reqwest = { version = "0.11.23", features = [
+    "json",
+    "rustls-tls",
+] } # Async HTTP with TLS support
+
+# ===== API DOCUMENTATION =====
+# Utoipa - OpenAPI documentation generator
+utoipa = { version = "4.2.0", features = [
+    "axum_extras",
+    "chrono",
+    "uuid",
+] } # Auto-generate API docs
+# Utoipa Swagger UI - Serve Swagger UI for API documentation
+utoipa-swagger-ui = { version = "6.0.0", features = [
+    "axum",
+] } # Interactive API documentation
+
+# ===== PERFORMANCE & CACHING =====
+# Moka - High-performance concurrent cache
+moka = { version = "0.12.3", features = [
+    "future",
+] } # In-memory caching for performance
+# Deadpool - Async connection pool
+deadpool-postgres = "0.12.1" # Connection pooling for database efficiency
+
+# ===== RATE LIMITING =====
+# Tower-governor - Rate limiting middleware
+tower_governor = "0.4.2" # Protect against abuse and DDoS
+
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+rust_decimal = { version = "1.41", features = ["serde-float", "std", "maths"] }
+rust_decimal_macros = "1.40"
+rand = { version = "0.10.1", features = ["thread_rng"] }
+lazy_static = "1.4"
+regex = "1.10"
+validator = { version = "0.16", features = ["derive"] }
+# ===== TESTING =====
+[dev-dependencies]
+# Tokio-test - Testing utilities for async code
+tokio-test = "0.4.3" # Async test helpers
+# HTTPie - HTTP testing client
+httpc-test = "0.1.9" # HTTP integration testing
+# Fake - Generate fake data for testing
+fake = { version = "2.9.2", features = [
+    "derive",
+    "chrono",
+    "uuid",
+] } # Test data generation
+
+# ===== BUILD OPTIMIZATION =====
+[profile.release]
+# Optimize for binary size and performance
+opt-level = 3     # Maximum optimization level
+lto = true        # Link-Time Optimization for smaller binaries
+codegen-units = 1 # Single codegen unit for better optimization
+strip = true      # Strip symbols for smaller binary size
+panic = "abort"   # Abort on panic for smaller binary
+
+[profile.dev]
+# Development profile for faster compilation
+opt-level = 0 # No optimization for faster builds
