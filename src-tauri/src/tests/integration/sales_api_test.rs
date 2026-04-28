@@ -3,21 +3,25 @@
 
 #[cfg(test)]
 mod sales_api_tests {
+    use std::sync::Arc;
     use axum::{
         body::Body,
+        body::to_bytes,
         http::{Request, StatusCode},
     };
     use tower::ServiceExt;
     use serde_json::json;
     use uuid::Uuid;
     
-    use crate::common::*;
+    use crate::tests::common::*;
+    use crate::create_router;
+    use sqlx::Sqlite;
     use sqlx::types::Decimal;
 
     #[tokio::test]
     async fn test_create_sales_invoice() {
         let state = setup_test_app_state().await;
-        let pool = state.sqlite_pool.as_ref().unwrap();
+        let pool = get_sqlite_pool(&state);
         
         let company_id = create_test_company(pool).await;
         let role_id = create_test_role(pool, company_id, UserRole::Admin).await;
@@ -29,8 +33,8 @@ mod sales_api_tests {
         // Ensure stock exists
         create_test_stock(pool, company_id, item_id, branch_id, 50).await;
         
-        let token = generate_test_token(user_id, company_id, role_id, &state.jwt_secret);
-        let app = erp_backend::create_test_router(state);
+        let token = generate_test_token(user_id, company_id, role_id, &get_jwt_secret(&state));
+        let app = create_router(state);
         
         let request = Request::builder()
             .uri("/api/v1/sales/invoices")
@@ -60,7 +64,7 @@ mod sales_api_tests {
         
         assert_eq!(response.status(), StatusCode::CREATED);
         
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         
         assert_eq!(json["data"]["status"], "draft");
@@ -70,7 +74,7 @@ mod sales_api_tests {
     #[tokio::test]
     async fn test_approve_sales_invoice() {
         let state = setup_test_app_state().await;
-        let pool = state.sqlite_pool.as_ref().unwrap();
+        let pool = get_sqlite_pool(&state);
         
         let company_id = create_test_company(pool).await;
         let role_id = create_test_role(pool, company_id, UserRole::Admin).await;
@@ -83,7 +87,7 @@ mod sales_api_tests {
         
         // Create invoice first
         let invoice_id = Uuid::new_v4();
-        sqlx::query(
+        sqlx::query::<Sqlite>(
             r#"INSERT INTO sales_invoices (id, company_id, customer_id, branch_id, 
                 invoice_number, invoice_date, status, total_amount, balance_due)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#
@@ -95,14 +99,14 @@ mod sales_api_tests {
         .bind("INV-TEST-001")
         .bind(chrono::Utc::now().date_naive())
         .bind("draft")
-        .bind(Decimal::from(1000))
-        .bind(Decimal::from(1000))
+        .bind("1000")
+        .bind("1000")
         .execute(pool)
         .await
         .unwrap();
         
-        let token = generate_test_token(user_id, company_id, role_id, &state.jwt_secret);
-        let app = erp_backend::create_test_router(state);
+        let app = create_router(Arc::clone(&state));
+        let token = generate_test_token(user_id, company_id, role_id, &get_jwt_secret(&state));
         
         // Approve invoice
         let request = Request::builder()

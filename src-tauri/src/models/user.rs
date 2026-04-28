@@ -1,9 +1,9 @@
 // src/models/user.rs
 // User authentication and authorization models
 
-use chrono::{ DateTime, Utc };
-use serde::{ Deserialize, Serialize };
-use sqlx::{ FromRow, Sqlite, SqlitePool, PgPool, Postgres };
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, Row, Sqlite, SqlitePool, PgPool, Postgres};
 use uuid::Uuid;
 use validator::Validate;
 use utoipa::ToSchema;
@@ -40,7 +40,7 @@ pub enum UserStatus {
 }
 
 // ===== USER MODEL =====
-#[derive(Debug, Clone, Serialize, PartialEq, Deserialize, FromRow , ToSchema)]
+#[derive(Debug, Clone, Serialize, PartialEq, Deserialize, FromRow, ToSchema)]
 pub struct User {
     pub id: Uuid,
     pub company_id: Uuid,
@@ -143,6 +143,8 @@ pub struct CreateUserRequest {
 
     pub role_id: Uuid,
     pub company_id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
 }
 
 lazy_static! {
@@ -301,7 +303,7 @@ pub async fn create_sqlite(
         .bind(&request.first_name)
         .bind(&request.last_name)
         .bind(&request.phone)
-        .bind("pending")
+        .bind(request.status.as_deref().unwrap_or("pending"))
         .bind(false)
         .bind(0)
         .bind(false)
@@ -377,7 +379,12 @@ pub async fn create_sqlite(
         .bind(request.first_name)
         .bind(request.last_name)
         .bind(request.phone)
-        .bind(UserStatus::Pending)
+        .bind(match request.status.as_deref() {
+            Some("active") => UserStatus::Active,
+            Some("inactive") => UserStatus::Inactive,
+            Some("suspended") => UserStatus::Suspended,
+            _ => UserStatus::Active
+        })
         .bind(false)
         .bind(0)
         .bind(false)
@@ -389,7 +396,6 @@ pub async fn create_sqlite(
         Ok(user)
     }
 
-   
 pub async fn find_by_id_sqlite(pool: &SqlitePool, id: Uuid) -> Result<Option<User>, sqlx::Error> {
         let user = sqlx
             ::query_as::<Sqlite, User>(
@@ -400,51 +406,73 @@ pub async fn find_by_id_sqlite(pool: &SqlitePool, id: Uuid) -> Result<Option<Use
         Ok(user)
     }
 
-        pub async fn find_by_id_pg(pool: &PgPool, id: Uuid) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx
-            ::query_as::<Postgres, User>(
-                r#"SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL"#
+pub async fn find_by_id_pg(pool: &PgPool, id: Uuid) -> Result<Option<User>, sqlx::Error> {
+        let row_json: Option<String> = sqlx::query_scalar(
+                "SELECT row_to_json(u)::text FROM (SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL) u"
             )
             .bind(id)
             .fetch_optional(pool).await?;
-        Ok(user)
+        
+        match row_json {
+            Some(json_str) => {
+                let user: User = serde_json::from_str(&json_str)
+                    .map_err(|e| sqlx::Error::Protocol(format!("JSON parse error: {}", e)))?;
+                Ok(Some(user))
+            }
+            None => Ok(None)
+        }
     }
+
     pub async fn find_by_username_sqlite(
         pool: &SqlitePool,
         username: &str
     ) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx
-            ::query_as::<Sqlite, User>(
-                r#"SELECT * FROM users WHERE username = ? AND deleted_at IS NULL"#
-            )
-            .bind(username)
-            .fetch_optional(pool).await?;
+        let user = sqlx::query_as::<Sqlite, User>(
+            "SELECT * FROM users WHERE username = ? AND deleted_at IS NULL"
+        )
+        .bind(username)
+        .fetch_optional(pool).await?;
         Ok(user)
     }
-
-        pub async fn find_by_username_pg(
+    
+    pub async fn find_by_username_pg(
         pool: &PgPool,
         username: &str
     ) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx
-            ::query_as::<Postgres, User>(
-                r#"SELECT * FROM users WHERE username = $1 AND deleted_at IS NULL"#
+        let row_json: Option<String> = sqlx::query_scalar(
+                "SELECT row_to_json(u)::text FROM (SELECT * FROM users WHERE username = $1 AND deleted_at IS NULL) u"
             )
             .bind(username)
             .fetch_optional(pool).await?;
-        Ok(user)
+        
+        match row_json {
+            Some(json_str) => {
+                let user: User = serde_json::from_str(&json_str)
+                    .map_err(|e| sqlx::Error::Protocol(format!("JSON parse error: {}", e)))?;
+                Ok(Some(user))
+            }
+            None => Ok(None)
+        }
     }
+    
     pub async fn find_by_email_pg(
         pool: &PgPool,
         email: &str
     ) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx
-            ::query_as::<Postgres, User>(
-                r#"SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL"#
+        let row_json: Option<String> = sqlx::query_scalar(
+                "SELECT row_to_json(u)::text FROM (SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL) u"
             )
             .bind(email)
             .fetch_optional(pool).await?;
-        Ok(user)
+        
+        match row_json {
+            Some(json_str) => {
+                let user: User = serde_json::from_str(&json_str)
+                    .map_err(|e| sqlx::Error::Protocol(format!("JSON parse error: {}", e)))?;
+                Ok(Some(user))
+            }
+            None => Ok(None)
+        }
     }
 
         pub async fn find_by_email_sqlite(
@@ -702,27 +730,104 @@ pub async fn find_by_id_sqlite(pool: &SqlitePool, id: Uuid) -> Result<Option<Use
             .execute(pool).await?;
         Ok(())
     }
-
+    
+    pub async fn find_by_reset_token_sqlite(
+        pool: &SqlitePool,
+        token: &str
+    ) -> Result<Option<User>, sqlx::Error> {
+        let user = sqlx::query_as::<Sqlite, User>(
+            "SELECT * FROM users WHERE password_reset_token = ? AND deleted_at IS NULL"
+        )
+        .bind(token)
+        .fetch_optional(pool).await?;
+        Ok(user)
+    }
+    
+    pub async fn find_by_reset_token_pg(
+        pool: &PgPool,
+        token: &str
+    ) -> Result<Option<User>, sqlx::Error> {
+        let row_json: Option<String> = sqlx::query_scalar(
+            "SELECT row_to_json(u)::text FROM (SELECT * FROM users WHERE password_reset_token = $1 AND deleted_at IS NULL) u"
+        )
+        .bind(token)
+        .fetch_optional(pool).await?;
+        
+        match row_json {
+            Some(json_str) => {
+                let user: User = serde_json::from_str(&json_str)
+                    .map_err(|e| sqlx::Error::Protocol(format!("JSON parse error: {}", e)))?;
+                Ok(Some(user))
+            }
+            None => Ok(None)
+        }
+    }
+    
+    pub async fn verify_email_sqlite(
+        pool: &SqlitePool,
+        id: Uuid
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE users SET is_email_verified = 1, email_verified_at = CURRENT_TIMESTAMP, password_reset_token = NULL WHERE id = ?"
+        )
+        .bind(id)
+        .execute(pool).await?;
+        Ok(())
+    }
+    
+    pub async fn verify_email_pg(
+        pool: &PgPool,
+        id: Uuid
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE users SET is_email_verified = true, email_verified_at = CURRENT_TIMESTAMP, password_reset_token = NULL WHERE id = $1"
+        )
+        .bind(id)
+        .execute(pool).await?;
+        Ok(())
+    }
+    
+    pub async fn set_reset_token_pg(
+        pool: &PgPool,
+        id: Uuid,
+        token: &str,
+        expires_at: DateTime<Utc>
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE users SET password_reset_token = $1, password_reset_expires_at = $2 WHERE id = $3"
+        )
+        .bind(token)
+        .bind(expires_at)
+        .bind(id)
+        .execute(pool).await?;
+        Ok(())
+    }
+    
+    pub async fn clear_reset_token_pg(
+        pool: &PgPool,
+        id: Uuid
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE users SET password_reset_token = NULL, password_reset_expires_at = NULL WHERE id = $1"
+        )
+        .bind(id)
+        .execute(pool).await?;
+        Ok(())
+    }
+    
     pub async fn update_last_login_pg(
         pool: &PgPool,
         id: Uuid,
-        ip_address: Option<String>
+        _ip_address: Option<String>
     ) -> Result<(), sqlx::Error> {
-        sqlx
-            ::query::<Postgres>(
-                r#"
-            UPDATE users
-            SET last_login_at = CURRENT_TIMESTAMP,
-                last_login_ip = $1,
-                failed_login_attempts = 0
-            WHERE id = $2
-            "#
-            )
-            .bind(ip_address)
-            .bind(id)
-            .execute(pool).await?;
+        sqlx::query(
+            r#"UPDATE users SET last_login_at = CURRENT_TIMESTAMP, failed_login_attempts = 0 WHERE id = $1"#
+        )
+        .bind(id)
+        .execute(pool).await?;
         Ok(())
     }
+    
     pub async fn update_last_login_sqlite(
         pool: &SqlitePool,
         id: Uuid,

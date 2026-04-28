@@ -2,32 +2,40 @@
 -- Complete database schema for ERP system with all tables and relationships
 
 -- ===== ENABLE EXTENSIONS =====
--- Enable UUID generation for primary keys
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Enable UUID generation for primary keys (skip if already exists)
+DO $$ BEGIN
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
--- Enable pgcrypto for additional encryption functions
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- Enable pgcrypto for additional encryption functions (skip if already exists)  
+DO $$ BEGIN
+    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- ===== ENUM TYPES =====
 -- Define custom ENUM types for type safety and constraints
 
 -- User roles for RBAC (Role-Based Access Control)
-CREATE TYPE user_role AS ENUM (
-    'admin',                -- Full system access
-    'inventory_manager',    -- Inventory and stock management
-    'sales_user',          -- Sales and customer management
-    'import_clerk'         -- Purchase and import management
-);
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM ('admin', 'inventory_manager', 'sales_user', 'purchase_manager', 'accountant', 'import_clerk', 'reports_viewer', 'read_only');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- User account status
+DO $$ BEGIN
 CREATE TYPE user_status AS ENUM (
     'active',              -- Can log in and use system
     'inactive',            -- Temporarily disabled
     'suspended',           -- Blocked due to violation
     'pending'              -- Awaiting approval
 );
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- Invoice status tracking
+DO $$ BEGIN
 CREATE TYPE invoice_status AS ENUM (
     'draft',               -- Being created
     'pending',             -- Awaiting approval
@@ -36,8 +44,11 @@ CREATE TYPE invoice_status AS ENUM (
     'cancelled',           -- Cancelled invoice
     'refunded'             -- Payment refunded
 );
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- Purchase order status
+DO $$ BEGIN
 CREATE TYPE purchase_status AS ENUM (
     'draft',               -- Being created
     'submitted',           -- Sent to supplier
@@ -46,8 +57,11 @@ CREATE TYPE purchase_status AS ENUM (
     'received',            -- Items received
     'cancelled'            -- Order cancelled
 );
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- Stock movement types for audit trail
+DO $$ BEGIN
 CREATE TYPE stock_movement_type AS ENUM (
     'purchase',            -- Added via purchase order
     'sale',                -- Deducted via sale
@@ -57,6 +71,8 @@ CREATE TYPE stock_movement_type AS ENUM (
     'damage',              -- Damaged items
     'loss'                 -- Lost items
 );
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- ===== CORE TABLES =====
 
@@ -610,7 +626,7 @@ CREATE INDEX idx_import_orders_status ON import_orders(status);
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),  -- Unique log entry identifier
     company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,  -- Belongs to company
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL,  -- User who performed action
+    user_id UUID,  -- User who performed action (can be null for system events)
     action VARCHAR(100) NOT NULL,                     -- Action type (CREATE, UPDATE, DELETE, LOGIN)
     entity_type VARCHAR(100) NOT NULL,                -- Affected entity (user, invoice, stock)
     entity_id UUID,                                   -- Affected entity ID
@@ -904,5 +920,4 @@ COMMENT ON TABLE audit_logs IS 'System-wide audit trail for compliance';
 
 -- Database setup complete!
 -- Run this migration to create the complete schema
-ALTER TABLE suppliers 
-ADD COLUMN rating NUMERIC(3,2) CHECK (rating >= 0 AND rating <= 5);
+-- Note: rating column already added in main schema

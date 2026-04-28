@@ -151,7 +151,7 @@ mod user_model_tests {
         let user_id = create_test_user(&pool, company_id, role_id, "updateme").await;
         
         // Update request
-        let request = erp_backend::models::user::UpdateUserRequest {
+        let request = crate::models::user::UpdateUserRequest {
             email: Some("newemail@test.com".to_string()),
             first_name: Some("Updated".to_string()),
             last_name: None,

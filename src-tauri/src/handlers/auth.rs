@@ -3,13 +3,11 @@
 // Handles login, registration, token refresh, and logout
 
 use axum::{extract::State, Json};
-use axum::extract::ConnectInfo;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use utoipa::ToSchema;
 use validator::Validate;
 use tracing;
-use std::net::SocketAddr;
 use uuid::Uuid;
 
 use crate::{
@@ -88,7 +86,6 @@ pub struct UserInfo {
 )]
 pub async fn login(
     State(state): State<Arc<AppState>>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>, // Correctly extract IP
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>> {
     // Validate input
@@ -97,7 +94,7 @@ pub async fn login(
     
     tracing::info!(username = %payload.username, "Login attempt");
     
-    // 1. Fetch user using the dual-db pattern and assign to a variable
+    // 1. Fetch user using the dual-db pattern
     let user = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
             let found = if let Some(u) = User::find_by_username_pg(&pool, &payload.username).await? {
@@ -156,7 +153,7 @@ let refresh_token = generate_jwt(
     TokenType::Refresh,
     &state.config.jwt_secret, // Fix: Added .config
 )?;
-    let ip_address = Some(addr.ip().to_string());
+    let ip_address = None;
     // 5. Update last login timestamp using correct engine
     match state.db.as_ref() {
         DbPool::Postgres(pool) => User::update_last_login_pg(&pool, user.id,ip_address.clone()).await?,
@@ -298,9 +295,9 @@ pub async fn register(
         first_name: first_name.clone(),
         last_name: last_name.clone(),
         phone: payload.phone,
-        // Use payload ID if provided, otherwise fallback to our seeded record
         role_id,
         company_id,
+        status: Some("active".to_string()),
     };
     
     let system_user_id = Some(Uuid::nil());
@@ -535,21 +532,58 @@ pub struct VerifyEmailRequest {
     )
 )]
 pub async fn verify_email(
-    // State(state): State<Arc<AppState>>,
-    // Json(payload): Json<VerifyEmailRequest>,
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<VerifyEmailRequest>,
 ) -> Result<impl axum::response::IntoResponse> {
-    // TODO: Implement email verification logic
-    // 1. Validate token
-    // 2. Find user by token
-    // 3. Mark email as verified
-    // 4. Clear verification token
+    tracing::info!(token = %payload.token, "Email verification attempted");
     
-    tracing::info!("Email verification endpoint called (not implemented)");
+    let user = match state.db.as_ref() {
+        DbPool::Postgres(pool) => {
+            let row_json: Option<String> = sqlx::query_scalar(
+                "SELECT row_to_json(u)::text FROM (SELECT * FROM users WHERE password_reset_token = $1 AND deleted_at IS NULL) u"
+            )
+            .bind(&payload.token)
+            .fetch_optional(pool).await
+            .map_err(|e| AppError::InternalError(e.to_string()))?;
+            
+            match row_json {
+                Some(json_str) => {
+                    let user: User = serde_json::from_str(&json_str)
+                        .map_err(|e| AppError::InternalError(format!("JSON parse error: {}", e)))?;
+                    Some(user)
+                }
+                None => None
+            }
+        }
+        DbPool::Sqlite(pool) => {
+            User::find_by_reset_token_sqlite(pool, &payload.token).await.ok()
+        }
+    };
+    
+    let user = user.ok_or_else(|| {
+        AppError::InvalidToken
+    })?;
+    
+    match state.db.as_ref() {
+        DbPool::Postgres(pool) => {
+            sqlx::query(
+                "UPDATE users SET is_email_verified = true, email_verified_at = CURRENT_TIMESTAMP, password_reset_token = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1"
+            )
+            .bind(user.id)
+            .execute(pool).await
+            .map_err(|e| AppError::InternalError(e.to_string()))?;
+        }
+        DbPool::Sqlite(pool) => {
+            User::verify_email_sqlite(pool, user.id).await
+            .map_err(|e| AppError::InternalError(e.to_string()))?;
+        }
+    }
     
     Ok(success(
         "Email verified successfully",
         serde_json::json!({
-            "message": "Your email has been verified"
+            "message": "Your email has been verified",
+            "user_id": user.id.to_string()
         }),
     ))
 }
@@ -668,7 +702,7 @@ pub async fn reset_password(
 // Create the authentication router with all auth endpoints
 pub fn auth_router() -> axum::Router<Arc<AppState>> {
     use axum::routing::{get, post};
-    
+
     axum::Router::new()
         .route("/login", post(login))
         .route("/register", post(register))

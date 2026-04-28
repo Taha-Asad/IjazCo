@@ -5,7 +5,7 @@
 use axum::{
     async_trait,
     extract::FromRequestParts,
-    extract::{Request, State},
+    extract::Request,
     http::request::Parts,
     http::HeaderMap,
     middleware::Next,
@@ -83,11 +83,22 @@ fn get_db_pool(state: &AppState) -> &DbPool {
 
 // ===== JWT AUTHENTICATION MIDDLEWARE =====
 pub async fn auth_middleware(
-    State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
     mut request: Request,
     next: Next,
 ) -> Result<Response> {
+    let uri = request.uri().path().to_string();
+    
+    // Skip authentication for public auth routes
+    let public_routes = ["/login", "/register", "/refresh", "/logout", "/verify-email", "/request-password-reset", "/reset-password"];
+    if public_routes.iter().any(|r| uri.ends_with(r)) {
+        return Ok(next.run(request).await);
+    }
+    
+    let state = request.extensions().get::<Arc<AppState>>().cloned()
+        .ok_or(AppError::InternalError("Missing app state".to_string()))?;
+    
+    let headers = request.headers().clone();
+    
     // Extract Authorization header
     let auth_header = headers
         .get("Authorization")
@@ -168,45 +179,49 @@ pub async fn auth_middleware(
 
 // ===== OPTIONAL AUTHENTICATION MIDDLEWARE =====
 pub async fn optional_auth_middleware(
-    State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
     mut request: Request,
     next: Next,
 ) -> Result<Response> {
-    if let Some(auth_header) = headers.get("Authorization").and_then(|h| h.to_str().ok()) {
-        if let Ok(token) = extract_token_from_header(auth_header) {
-            let jwt_secret = get_jwt_secret(&state);
-            if let Ok(claims) = validate_jwt(token, jwt_secret) {
-                if let (Ok(user_id), Ok(company_id), Ok(role_id)) = (
-                    Uuid::parse_str(&claims.sub),
-                    Uuid::parse_str(&claims.company_id),
-                    Uuid::parse_str(&claims.role_id),
-                ) {
-                    let db = get_db_pool(&state);
-                    let user_result = match db {
-                        DbPool::Postgres(pool) => User::find_by_id_pg(pool, user_id).await,
-                        DbPool::Sqlite(pool) => User::find_by_id_sqlite(pool, user_id).await,
-                    };
-                    
-                    if let Ok(Some(user)) = user_result {
-                        if user.status == UserStatus::Active && !user.is_locked() {
-                            let auth_user = AuthUser {
-                                id: user_id,
-                                company_id,
-                                role_id,
-                                email: claims.email,
-                                username: claims.username,
-                                first_name: user.first_name.clone(),
-                                last_name: user.last_name.clone(),
-                                user,
-                            };
-                            
-                            request.extensions_mut().insert(auth_user);
-                            
-                            tracing::debug!(
-                                user_id = %user_id,
-                                "Optional authentication successful"
-                            );
+    let state = request.extensions().get::<Arc<AppState>>().cloned();
+    
+    if let Some(state) = state {
+        let headers = request.headers().clone();
+        
+        if let Some(auth_header) = headers.get("Authorization").and_then(|h| h.to_str().ok()) {
+            if let Ok(token) = extract_token_from_header(auth_header) {
+                let jwt_secret = get_jwt_secret(&state);
+                if let Ok(claims) = validate_jwt(token, jwt_secret) {
+                    if let (Ok(user_id), Ok(company_id), Ok(role_id)) = (
+                        Uuid::parse_str(&claims.sub),
+                        Uuid::parse_str(&claims.company_id),
+                        Uuid::parse_str(&claims.role_id),
+                    ) {
+                        let db = get_db_pool(&state);
+                        let user_result = match db {
+                            DbPool::Postgres(pool) => User::find_by_id_pg(pool, user_id).await,
+                            DbPool::Sqlite(pool) => User::find_by_id_sqlite(pool, user_id).await,
+                        };
+                        
+                        if let Ok(Some(user)) = user_result {
+                            if user.status == UserStatus::Active && !user.is_locked() {
+                                let auth_user = AuthUser {
+                                    id: user_id,
+                                    company_id,
+                                    role_id,
+                                    email: claims.email,
+                                    username: claims.username,
+                                    first_name: user.first_name.clone(),
+                                    last_name: user.last_name.clone(),
+                                    user,
+                                };
+                                
+                                request.extensions_mut().insert(auth_user);
+                                
+                                tracing::debug!(
+                                    user_id = %user_id,
+                                    "Optional authentication successful"
+                                );
+                            }
                         }
                     }
                 }

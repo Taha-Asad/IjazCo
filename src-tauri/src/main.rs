@@ -1,6 +1,5 @@
 // src/main.rs
 use std::{net::SocketAddr, sync::Arc};
-use axum::Router;
 use tower_http::{cors::CorsLayer, trace::TraceLayer, compression::CompressionLayer};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -30,11 +29,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     info!("Starting ERP Backend Server...");
     
+    // Debug: check env loading
+    let use_postgres_env = std::env::var("USE_POSTGRES").unwrap_or_default();
+    info!("USE_POSTGRES env value: '{}'", use_postgres_env);
+    
     let app_config = AppConfig {
         env: std::env::var("RUST_ENV").unwrap_or_else(|_| "development".to_string()),
         jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret".to_string()),
         cors_origins: std::env::var("CORS_ORIGINS").unwrap_or_else(|_| "*".to_string()),
-        use_postgres: std::env::var("USE_POSTGRES").map(|v| v == "true").unwrap_or(false),
+        use_postgres: std::env::var("USE_POSTGRES").unwrap_or_default() == "true",
         pg_database_url: std::env::var("PG_DATABASE_URL").unwrap_or_default(),
         sqlite_database_url: std::env::var("SQLITE_DATABASE_URL")
             .unwrap_or_else(|_| "sqlite:erp.db?mode=rwc".to_string()),
@@ -48,7 +51,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 // inside async fn main() 
 match app_state.db.as_ref() {
     DbPool::Postgres(pool) => {
-        sqlx::migrate!("./migrations/postgres").run(pool).await?;
+        // Try to run migrations, but don't fail if tables exist
+        match sqlx::migrate!("./migrations/postgres").run(pool).await {
+            Ok(_) => info!("Migrations completed."),
+            Err(e) => {
+                if e.to_string().contains("already exists") {
+                    info!("Tables already exist, skipping migrations...");
+                } else {
+                    return Err(e.into());
+                }
+            }
+        }
+        // Drop problematic FK constraint if it exists
+        sqlx::query("ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_user_id_fkey")
+            .execute(pool).await?;
+        info!("Ensuring seed data exists...");
+        let mut tx = pool.begin().await?;
+        // Seed company
+        sqlx::query(r#"
+            INSERT INTO companies (id, name, email, country, is_active)
+            VALUES ('00000000-0000-0000-0000-000000000001', 'Seed Co', 'seed@test.com', 'USA', true)
+            ON CONFLICT(id) DO NOTHING
+        "#).execute(&mut *tx).await?;
+        // Seed role
+        sqlx::query(r#"
+            INSERT INTO roles (id, company_id, name, role_type, permissions, is_system, is_active)
+            VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Admin', 'admin', '{}', true, true)
+            ON CONFLICT(id) DO NOTHING
+        "#).execute(&mut *tx).await?;
+        // Seed branch 
+        sqlx::query(r#"
+            INSERT INTO branches (id, company_id, code, name, address, city, country, is_active)
+            VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'MAIN', 'Main Warehouse', '123 Main St', 'New York', 'USA', true)
+            ON CONFLICT(id) DO NOTHING
+        "#).execute(&mut *tx).await?;
+        tx.commit().await?;
+        info!("Seed data verified.");
     }
     DbPool::Sqlite(pool) => {
 // inside src/main.rs -> DbPool::Sqlite(pool) arm

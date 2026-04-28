@@ -3,27 +3,30 @@
 
 #[cfg(test)]
 mod inventory_api_tests {
+    use std::sync::Arc;
     use axum::{
         body::Body,
+        body::to_bytes,
         http::{Request, StatusCode},
     };
     use tower::ServiceExt;
     use serde_json::json;
     use uuid::Uuid;
     
-    use crate::common::*;
+    use crate::tests::common::*;
+    use crate::create_router;
 
     #[tokio::test]
     async fn test_create_inventory_item() {
         let state = setup_test_app_state().await;
-        let pool = state.sqlite_pool.as_ref().unwrap();
+        let pool = get_sqlite_pool(&state);
         
         let company_id = create_test_company(pool).await;
         let role_id = create_test_role(pool, company_id, UserRole::Admin).await;
         let user_id = create_test_user(pool, company_id, role_id, "inventoryuser").await;
-        let token = generate_test_token(user_id, company_id, role_id, &state.jwt_secret);
+        let token = generate_test_token(user_id, company_id, role_id, &get_jwt_secret(&state));
         
-        let app = erp_backend::create_test_router(state);
+        let app = create_router(state);
         
         let request = Request::builder()
             .uri("/api/v1/inventory/items")
@@ -50,7 +53,7 @@ mod inventory_api_tests {
         
         assert_eq!(response.status(), StatusCode::CREATED);
         
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         
         assert_eq!(json["data"]["sku"], "TEST-SKU-001");
@@ -60,7 +63,7 @@ mod inventory_api_tests {
     #[tokio::test]
     async fn test_get_inventory_items() {
         let state = setup_test_app_state().await;
-        let pool = state.sqlite_pool.as_ref().unwrap();
+        let pool = get_sqlite_pool(&state);
         
         let company_id = create_test_company(pool).await;
         let role_id = create_test_role(pool, company_id, UserRole::Admin).await;
@@ -69,8 +72,8 @@ mod inventory_api_tests {
         // Create test item
         let item_id = create_test_item(pool, company_id, "GET-TEST-SKU").await;
         
-        let token = generate_test_token(user_id, company_id, role_id, &state.jwt_secret);
-        let app = erp_backend::create_test_router(state);
+        let token = generate_test_token(user_id, company_id, role_id, &get_jwt_secret(&state));
+        let app = create_router(state);
         
         let request = Request::builder()
             .uri("/api/v1/inventory/items")
@@ -83,7 +86,7 @@ mod inventory_api_tests {
         
         assert_eq!(response.status(), StatusCode::OK);
         
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         
         let items = json["data"]["items"].as_array().unwrap();
@@ -99,7 +102,7 @@ mod inventory_api_tests {
     #[tokio::test]
     async fn test_stock_adjustment() {
         let state = setup_test_app_state().await;
-        let pool = state.sqlite_pool.as_ref().unwrap();
+        let pool = get_sqlite_pool(&state);
         
         let company_id = create_test_company(pool).await;
         let role_id = create_test_role(pool, company_id, UserRole::Admin).await;
@@ -110,8 +113,9 @@ mod inventory_api_tests {
         // Initialize stock
         create_test_stock(pool, company_id, item_id, branch_id, 100).await;
         
-        let token = generate_test_token(user_id, company_id, role_id, &state.jwt_secret);
-        let app = erp_backend::create_test_router(state);
+        // Create router before extracting more data from state
+        let app = create_router(Arc::clone(&state));
+        let token = generate_test_token(user_id, company_id, role_id, &get_jwt_secret(&state));
         
         // Adjust stock
         let request = Request::builder()

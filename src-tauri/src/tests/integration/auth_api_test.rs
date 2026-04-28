@@ -3,21 +3,24 @@
 
 #[cfg(test)]
 mod auth_api_tests {
+    use std::sync::Arc;
     use axum::{
         body::Body,
+        body::to_bytes,
         http::{Request, StatusCode},
     };
     use tower::ServiceExt;
     use serde_json::json;
     
-    use crate::common::*;
+    use crate::tests::common::*;
+    use crate::create_router;
 
     // ... [Previous tests from previous prompt] ...
 
     #[tokio::test]
     async fn test_protected_endpoint_with_valid_token() {
         let state = setup_test_app_state().await;
-        let pool = state.sqlite_pool.as_ref().unwrap();
+        let pool = get_sqlite_pool(&state);
         
         let company_id = create_test_company(pool).await;
         let role_id = create_test_role(pool, company_id, UserRole::Admin).await;
@@ -28,11 +31,11 @@ mod auth_api_tests {
             user_id,
             company_id,
             role_id,
-            &state.jwt_secret,
+            &get_jwt_secret(&state),
         );
         
         // Build router using exposed test function
-        let app = erp_backend::create_test_router(state);
+        let app = create_router(state);
         
         // Access protected endpoint with token
         let request = Request::builder()
@@ -48,7 +51,7 @@ mod auth_api_tests {
         assert_eq!(response.status(), StatusCode::OK);
         
         // Verify response contains users list (even if empty)
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         
         assert!(json.get("data").is_some());
@@ -58,15 +61,14 @@ mod auth_api_tests {
     #[tokio::test]
     async fn test_refresh_token_flow() {
         let state = setup_test_app_state().await;
-        let pool = state.sqlite_pool.as_ref().unwrap();
+        let pool = get_sqlite_pool(&state);
         
         let company_id = create_test_company(pool).await;
         let role_id = create_test_role(pool, company_id, UserRole::Admin).await;
         let _ = create_test_user(pool, company_id, role_id, "refreshtest").await;
         
-        let app = erp_backend::create_test_router(state.clone());
-        
         // 1. Login to get tokens
+        let router = create_router(Arc::clone(&state));
         let login_req = Request::builder()
             .uri("/api/v1/auth/login")
             .method("POST")
@@ -81,14 +83,15 @@ mod auth_api_tests {
             ))
             .unwrap();
         
-        let login_resp = app.oneshot(login_req).await.unwrap();
+        let login_resp = router.oneshot(login_req).await.unwrap();
         assert_eq!(login_resp.status(), StatusCode::OK);
         
-        let body = hyper::body::to_bytes(login_resp.into_body()).await.unwrap();
+        let body = to_bytes(login_resp.into_body(), usize::MAX).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         let refresh_token = json["refresh_token"].as_str().unwrap();
         
-        // 2. Use refresh token to get new access token
+        // 2. Use refresh token to get new access token - create new router
+        let router2 = create_router(Arc::clone(&state));
         let refresh_req = Request::builder()
             .uri("/api/v1/auth/refresh")
             .method("POST")
@@ -101,10 +104,10 @@ mod auth_api_tests {
             ))
             .unwrap();
         
-        let refresh_resp = app.oneshot(refresh_req).await.unwrap();
+        let refresh_resp = router2.oneshot(refresh_req).await.unwrap();
         assert_eq!(refresh_resp.status(), StatusCode::OK);
         
-        let body = hyper::body::to_bytes(refresh_resp.into_body()).await.unwrap();
+        let body = to_bytes(refresh_resp.into_body(), usize::MAX).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         
         assert!(json["access_token"].as_str().is_some());

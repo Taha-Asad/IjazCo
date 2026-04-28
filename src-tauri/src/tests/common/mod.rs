@@ -2,18 +2,18 @@
 // Common test utilities and setup functions
 // Provides shared test infrastructure for all test modules
 
-use sqlx::{PgPool, SqlitePool};
+use sqlx::{PgPool, SqlitePool, Sqlite};
 use sqlx::types::Decimal;
 use uuid::Uuid;
 use std::sync::Arc;
 
-// Re-export commonly used test dependencies
-pub use erp_backend::{
+// Re-export commonly used test dependencies from crate
+pub use crate::{
     models::user::{User, UserRole, UserStatus, CreateUserRequest},
     models::inventory::{InventoryItem, CreateItemRequest},
     models::sales::{SalesInvoice, CreateSalesInvoiceRequest},
     utils::jwt::{generate_jwt, TokenType},
-    AppState,
+    config::{AppState, DbPool, AppConfig},
 };
 
 // ===== TEST DATABASE SETUP =====
@@ -27,13 +27,13 @@ pub async fn setup_test_db() -> SqlitePool {
         .expect("Failed to create test database");
     
     // Enable foreign key constraints (disabled by default in SQLite)
-    sqlx::query("PRAGMA foreign_keys = ON")
+    sqlx::query::<Sqlite>("PRAGMA foreign_keys = ON")
         .execute(&pool)
         .await
         .expect("Failed to enable foreign keys");
     
     // Run migrations to create schema
-    sqlx::migrate!("./migrations")
+    sqlx::migrate!("./migrations/sqlite")
         .run(&pool)
         .await
         .expect("Failed to run migrations");
@@ -48,33 +48,32 @@ pub async fn setup_test_app_state() -> Arc<AppState> {
     let sqlite_pool = setup_test_db().await;
     
     // Build test configuration
-    let config = erp_backend::config::database::DatabaseConfig {
-        database_url: "sqlite::memory:".to_string(),
-        sqlite_url: "sqlite::memory:".to_string(),
-        use_postgres: false,
-        max_connections: 5,
-        min_connections: 1,
-        connect_timeout: 10,
-        idle_timeout: 300,
-        host: "127.0.0.1".to_string(),
-        port: 8000,
-        jwt_secret: "test_secret_key_for_testing_only".to_string(),
-        jwt_access_expiration: 3600,
-        jwt_refresh_expiration: 604800,
+    let config = AppConfig {
         env: "test".to_string(),
+        jwt_secret: "test_secret_key_for_testing_only".to_string(),
         cors_origins: "http://localhost:3000".to_string(),
-        rate_limit_requests: 1000,
-        rate_limit_window: 60,
+        use_postgres: false,
+        pg_database_url: "".to_string(),
+        sqlite_database_url: "sqlite::memory:".to_string(),
     };
     
     // Create app state
     Arc::new(AppState {
-        pg_pool: None,
-        sqlite_pool: Some(Arc::new(sqlite_pool)),
-        jwt_secret: config.jwt_secret.clone(),
-        env: config.env.clone(),
-        config,
+        db: Arc::new(DbPool::Sqlite(sqlite_pool)),
+        config: Arc::new(config),
     })
+}
+
+// Helper functions to access AppState fields
+pub fn get_sqlite_pool(state: &Arc<AppState>) -> &SqlitePool {
+    match state.db.as_ref() {
+        DbPool::Sqlite(pool) => pool,
+        _ => panic!("Expected SQLite pool"),
+    }
+}
+
+pub fn get_jwt_secret(state: &Arc<AppState>) -> String {
+    state.config.jwt_secret.clone()
 }
 
 // ===== TEST DATA FACTORIES =====
@@ -84,25 +83,18 @@ pub async fn setup_test_app_state() -> Arc<AppState> {
 pub async fn create_test_company(pool: &SqlitePool) -> Uuid {
     let company_id = Uuid::new_v4();
     
-    sqlx::query(
+    sqlx::query::<Sqlite>(
         r#"
-        INSERT INTO companies (
-            id, name, email, country, currency, timezone,
-            is_active, subscription_plan, max_users, max_branches
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        INSERT INTO companies (id, name, code, email, country, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6)
         "#
     )
     .bind(company_id)
     .bind("Test Company Ltd")
+    .bind("TEST01")
     .bind("test@company.com")
     .bind("USA")
-    .bind("USD")
-    .bind("America/New_York")
     .bind(true)
-    .bind("enterprise")
-    .bind(100)
-    .bind(10)
     .execute(pool)
     .await
     .expect("Failed to create test company");
@@ -127,7 +119,7 @@ pub async fn create_test_role(
         "reports": {"view": true, "export": true}
     });
     
-    sqlx::query(
+    sqlx::query::<Sqlite>(
         r#"
         INSERT INTO roles (
             id, company_id, name, description, role_type,
@@ -161,10 +153,10 @@ pub async fn create_test_user(
     let user_id = Uuid::new_v4();
     
     // Hash a test password
-    let password_hash = erp_backend::utils::password::hash_password("TestPass123!")
+    let password_hash = crate::utils::password::hash_password("TestPass123!")
         .expect("Failed to hash password");
     
-    sqlx::query(
+    sqlx::query::<Sqlite>(
         r#"
         INSERT INTO users (
             id, company_id, role_id, username, email, password_hash,
@@ -202,7 +194,7 @@ pub async fn create_test_branch(
 ) -> Uuid {
     let branch_id = Uuid::new_v4();
     
-    sqlx::query(
+    sqlx::query::<Sqlite>(
         r#"
         INSERT INTO branches (
             id, company_id, code, name, type, address,
@@ -237,7 +229,7 @@ pub async fn create_test_item(
 ) -> Uuid {
     let item_id = Uuid::new_v4();
     
-    sqlx::query(
+    sqlx::query::<Sqlite>(
         r#"
         INSERT INTO inventory_items (
             id, company_id, sku, name, description, unit_of_measure,
@@ -256,15 +248,15 @@ pub async fn create_test_item(
     .bind("PCS")
     .bind(false)
     .bind(false)
-    .bind(Decimal::from(100))
-    .bind(Decimal::from(200))
-    .bind(Decimal::new(85, 1)) // 8.5%
+    .bind("100")
+    .bind("200")
+    .bind("8.5")
     .bind(10)
     .bind(50)
     .bind(7)
-    .bind(serde_json::json!([]))
-    .bind(serde_json::json!({}))
-    .bind(vec!["test"])
+    .bind("[]")
+    .bind("{}")
+    .bind("test")
     .bind(true)
     .bind(false)
     .execute(pool)
@@ -282,15 +274,18 @@ pub async fn create_test_stock(
     branch_id: Uuid,
     quantity: i32,
 ) {
-    sqlx::query(
+    let stock_id = Uuid::new_v4();
+    
+    sqlx::query::<Sqlite>(
         r#"
         INSERT INTO stock (
-            company_id, item_id, branch_id, quantity_on_hand,
+            id, company_id, item_id, branch_id, quantity_on_hand,
             quantity_allocated, quantity_in_transit
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         "#
     )
+    .bind(stock_id)
     .bind(company_id)
     .bind(item_id)
     .bind(branch_id)
@@ -310,7 +305,7 @@ pub async fn create_test_customer(
 ) -> Uuid {
     let customer_id = Uuid::new_v4();
     
-    sqlx::query(
+    sqlx::query::<Sqlite>(
         r#"
         INSERT INTO customers (
             id, company_id, customer_code, name, email, phone,
@@ -329,9 +324,9 @@ pub async fn create_test_customer(
     .bind("123 Customer St")
     .bind("Test City")
     .bind("USA")
-    .bind(Decimal::from(10000))
+    .bind("10000")
     .bind(30)
-    .bind(Decimal::ZERO)
+    .bind("0")
     .bind(true)
     .execute(pool)
     .await
@@ -348,7 +343,7 @@ pub async fn create_test_supplier(
 ) -> Uuid {
     let supplier_id = Uuid::new_v4();
     
-    sqlx::query(
+    sqlx::query::<Sqlite>(
         r#"
         INSERT INTO suppliers (
             id, company_id, supplier_code, name, email, phone,

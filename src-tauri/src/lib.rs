@@ -7,6 +7,7 @@ pub mod utils;
 
 use axum::{
     Router, 
+    routing::get,
     Extension,
     middleware::from_fn, 
     extract::Request, 
@@ -15,6 +16,7 @@ use axum::{
 };
 use std::sync::Arc;
 use crate::config::{AppState, DbPool};
+use crate::middleware::auth::auth_middleware;
 
 pub fn create_router(state: Arc<AppState>) -> Router {
     // Clone db pool for injection into request extensions
@@ -27,15 +29,18 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         async move { next.run(req).await }
     });
     
+    // Create auth middleware
+    let auth_middleware_fn = from_fn(auth_middleware);
+    
     Router::new()
         // Health check
         .nest("/api/v1/health", handlers::health::health_router())
-        // Authentication
-        .nest("/api/v1/auth", handlers::auth::auth_router())
-        // User management
-        .nest("/api/v1/users", handlers::users::users_router())
+        // Authentication (with auth layer for protected routes)
+        .nest("/api/v1/auth", handlers::auth::auth_router().layer(auth_middleware_fn.clone()))
         // Inventory
         .nest("/api/v1/inventory", handlers::inventory::inventory_router())
+        // Protected routes - add auth layer
+        .nest("/api/v1/users", handlers::users::users_router().layer(auth_middleware_fn))
         // Categories
         .nest("/api/v1/categories", handlers::categories::categories_router())
         // Customers
