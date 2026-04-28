@@ -529,6 +529,111 @@ impl Stock {
             .ok_or(sqlx::Error::RowNotFound)
     }
 
+    // ===== DEDUCT STOCK FOR SALES =====
+    pub async fn deduct_for_sale_pg(
+        pool: &PgPool,
+        company_id: Uuid,
+        item_id: Uuid,
+        branch_id: Uuid,
+        quantity: i32,
+        reference_id: Option<Uuid>,
+        created_by: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        let mut tx = pool.begin().await?;
+        
+        sqlx::query(
+            r#"
+            UPDATE stock
+            SET quantity_on_hand = quantity_on_hand - $1,
+                quantity_available = quantity_available - $1,
+                updated_at = NOW()
+            WHERE item_id = $2 AND branch_id = $3 AND quantity_on_hand >= $1
+            "#
+        )
+        .bind(quantity)
+        .bind(item_id)
+        .bind(branch_id)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query_as::<Postgres, StockMovement>(
+            r#"
+            INSERT INTO stock_movements (
+                company_id, item_id, from_branch_id, to_branch_id,
+                movement_type, quantity, reference_type, reference_id,
+                notes, created_by
+            )
+            VALUES ($1, $2, $3, NULL, $4, $5, 'sales_invoice', $6, 'Stock deducted for sale', $7)
+            RETURNING *
+            "#
+        )
+        .bind(company_id)
+        .bind(item_id)
+        .bind(branch_id)
+        .bind(MovementType::Sale)
+        .bind(quantity)
+        .bind(reference_id)
+        .bind(created_by)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn deduct_for_sale_sqlite(
+        pool: &SqlitePool,
+        company_id: Uuid,
+        item_id: Uuid,
+        branch_id: Uuid,
+        quantity: i32,
+        reference_id: Option<Uuid>,
+        created_by: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        let mut tx = pool.begin().await?;
+        
+        sqlx::query(
+            r#"
+            UPDATE stock
+            SET quantity_on_hand = quantity_on_hand - ?,
+                quantity_available = quantity_available - ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE item_id = ? AND branch_id = ? AND quantity_on_hand >= ?
+            "#
+        )
+        .bind(quantity)
+        .bind(quantity)
+        .bind(item_id)
+        .bind(branch_id)
+        .bind(quantity)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query_as::<Sqlite, StockMovementSqlite>(
+            r#"
+            INSERT INTO stock_movements (
+                company_id, item_id, from_branch_id, to_branch_id,
+                movement_type, quantity, reference_type, reference_id,
+                notes, created_by
+            )
+            VALUES (?, ?, ?, NULL, ?, ?, 'sales_invoice', ?, 'Stock deducted for sale', ?)
+            RETURNING *
+            "#
+        )
+        .bind(company_id)
+        .bind(item_id)
+        .bind(branch_id)
+        .bind(MovementType::Sale)
+        .bind(quantity)
+        .bind(reference_id)
+        .bind(created_by)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(())
+    }
+
     // ===== RECORD PHYSICAL COUNT =====
     pub async fn record_count_pg(
         pool: &PgPool,

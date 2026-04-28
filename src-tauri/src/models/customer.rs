@@ -621,45 +621,80 @@ impl Customer {
     pub async fn update_pg(
         pool: &PgPool,
         id: Uuid,
-        _request: UpdateCustomerRequest,
+        request: UpdateCustomerRequest,
         updated_by: Uuid,
     ) -> Result<Customer, sqlx::Error> {
-        let customer = sqlx::query_as::<Postgres, Customer>(
-            r#"
-            UPDATE customers
-            SET updated_by = $1, updated_at = NOW()
-            WHERE id = $2
-            RETURNING *
-            "#
-        )
-        .bind(updated_by)
-        .bind(id)
-        .fetch_one(pool)
-        .await?;
+        let mut builder = sqlx::QueryBuilder::<sqlx::Postgres>::new("UPDATE customers SET ");
+        builder.push("updated_by = ").push_bind(updated_by);
+        builder.push(", updated_at = NOW()");
         
-        Ok(customer)
+        if request.name.is_some() { builder.push(", name = ").push_bind(&request.name); }
+        if request.contact_person.is_some() { builder.push(", contact_person = ").push_bind(&request.contact_person); }
+        if request.email.is_some() { builder.push(", email = ").push_bind(&request.email); }
+        if request.phone.is_some() { builder.push(", phone = ").push_bind(&request.phone); }
+        if request.mobile.is_some() { builder.push(", mobile = ").push_bind(&request.mobile); }
+        if request.tax_id.is_some() { builder.push(", tax_id = ").push_bind(&request.tax_id); }
+        if request.billing_address.is_some() { builder.push(", billing_address = ").push_bind(&request.billing_address); }
+        if request.billing_city.is_some() { builder.push(", billing_city = ").push_bind(&request.billing_city); }
+        if request.billing_state.is_some() { builder.push(", billing_state = ").push_bind(&request.billing_state); }
+        if request.billing_country.is_some() { builder.push(", billing_country = ").push_bind(&request.billing_country); }
+        if request.billing_postal_code.is_some() { builder.push(", billing_postal_code = ").push_bind(&request.billing_postal_code); }
+        if request.shipping_address.is_some() { builder.push(", shipping_address = ").push_bind(&request.shipping_address); }
+        if request.shipping_city.is_some() { builder.push(", shipping_city = ").push_bind(&request.shipping_city); }
+        if request.shipping_state.is_some() { builder.push(", shipping_state = ").push_bind(&request.shipping_state); }
+        if request.shipping_country.is_some() { builder.push(", shipping_country = ").push_bind(&request.shipping_country); }
+        if request.shipping_postal_code.is_some() { builder.push(", shipping_postal_code = ").push_bind(&request.shipping_postal_code); }
+        if request.credit_limit.is_some() { builder.push(", credit_limit = ").push_bind(request.credit_limit); }
+        if request.credit_days.is_some() { builder.push(", credit_days = ").push_bind(request.credit_days); }
+        if request.discount_percentage.is_some() { builder.push(", discount_percentage = ").push_bind(request.discount_percentage); }
+        if request.is_active.is_some() { builder.push(", is_active = ").push_bind(request.is_active); }
+        if request.tags.is_some() { builder.push(", tags = ").push_bind(request.tags); }
+        if request.notes.is_some() { builder.push(", notes = ").push_bind(&request.notes); }
+        if request.metadata.is_some() { builder.push(", metadata = ").push_bind(request.metadata); }
+        
+        builder.push(" WHERE id = ").push_bind(id);
+        builder.push(" RETURNING *");
+        builder.build_query_as::<Customer>().fetch_one(pool).await
     }
     
     pub async fn update_sqlite(
         pool: &SqlitePool,
         id: Uuid,
-        _request: UpdateCustomerRequest,
+        request: UpdateCustomerRequest,
         updated_by: Uuid,
     ) -> Result<Customer, sqlx::Error> {
-        let customer_sqlite = sqlx::query_as::<Sqlite, CustomerSqlite>(
-            r#"
-            UPDATE customers
-            SET updated_by = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-            RETURNING *
-            "#
-        )
-        .bind(updated_by)
-        .bind(id)
-        .fetch_one(pool)
-        .await?;
+        let mut builder = sqlx::QueryBuilder::<sqlx::Sqlite>::new("UPDATE customers SET ");
+        builder.push("updated_by = ").push_bind(updated_by);
+        builder.push(", updated_at = CURRENT_TIMESTAMP");
         
-        Ok(Customer::from(customer_sqlite))
+        if request.name.is_some() { builder.push(", name = ").push_bind(&request.name); }
+        if request.contact_person.is_some() { builder.push(", contact_person = ").push_bind(&request.contact_person); }
+        if request.email.is_some() { builder.push(", email = ").push_bind(&request.email); }
+        if request.phone.is_some() { builder.push(", phone = ").push_bind(&request.phone); }
+        if request.mobile.is_some() { builder.push(", mobile = ").push_bind(&request.mobile); }
+        if request.tax_id.is_some() { builder.push(", tax_id = ").push_bind(&request.tax_id); }
+        if request.billing_address.is_some() { builder.push(", billing_address = ").push_bind(&request.billing_address); }
+        if request.billing_city.is_some() { builder.push(", billing_city = ").push_bind(&request.billing_city); }
+        if request.billing_state.is_some() { builder.push(", billing_state = ").push_bind(&request.billing_state); }
+        if request.billing_country.is_some() { builder.push(", billing_country = ").push_bind(&request.billing_country); }
+        if request.billing_postal_code.is_some() { builder.push(", billing_postal_code = ").push_bind(&request.billing_postal_code); }
+        if request.shipping_address.is_some() { builder.push(", shipping_address = ").push_bind(&request.shipping_address); }
+        if request.shipping_city.is_some() { builder.push(", shipping_city = ").push_bind(&request.shipping_city); }
+        if request.shipping_state.is_some() { builder.push(", shipping_state = ").push_bind(&request.shipping_state); }
+        if request.shipping_country.is_some() { builder.push(", shipping_country = ").push_bind(&request.shipping_country); }
+        if request.shipping_postal_code.is_some() { builder.push(", shipping_postal_code = ").push_bind(&request.shipping_postal_code); }
+        if request.credit_limit.is_some() { builder.push(", credit_limit = ").push_bind(request.credit_limit.unwrap_or_default().to_f64().unwrap_or_default()); }
+        if request.credit_days.is_some() { builder.push(", credit_days = ").push_bind(request.credit_days); }
+        if request.discount_percentage.is_some() { builder.push(", discount_percentage = ").push_bind(request.discount_percentage.unwrap_or_default().to_f64().unwrap_or_default()); }
+        if request.is_active.is_some() { builder.push(", is_active = ").push_bind(if request.is_active.unwrap() { 1 } else { 0 }); }
+        if request.tags.is_some() { builder.push(", tags = ").push_bind(serde_json::json!(request.tags)); }
+        if request.notes.is_some() { builder.push(", notes = ").push_bind(&request.notes); }
+        if request.metadata.is_some() { builder.push(", metadata = ").push_bind(request.metadata); }
+        
+        builder.push(" WHERE id = ").push_bind(id);
+        builder.push(" RETURNING *");
+        let result = builder.build_query_as::<CustomerSqlite>().fetch_one(pool).await?;
+        Ok(Customer::from(result))
     }
     
     // ===== DELETE CUSTOMER =====

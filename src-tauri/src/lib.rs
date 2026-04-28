@@ -37,26 +37,26 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .nest("/api/v1/health", handlers::health::health_router())
         // Authentication (with auth layer for protected routes)
         .nest("/api/v1/auth", handlers::auth::auth_router().layer(auth_middleware_fn.clone()))
-        // Inventory
-        .nest("/api/v1/inventory", handlers::inventory::inventory_router())
         // Protected routes - add auth layer
-        .nest("/api/v1/users", handlers::users::users_router().layer(auth_middleware_fn))
+        .nest("/api/v1/users", handlers::users::users_router().layer(auth_middleware_fn.clone()))
         // Categories
-        .nest("/api/v1/categories", handlers::categories::categories_router())
+        .nest("/api/v1/categories", handlers::categories::categories_router().layer(auth_middleware_fn.clone()))
         // Customers
-        .nest("/api/v1/customers", handlers::customers::customers_router())
+        .nest("/api/v1/customers", handlers::customers::customers_router().layer(auth_middleware_fn.clone()))
         // Sales
-        .nest("/api/v1/sales", handlers::sales::sales_router())
+        .nest("/api/v1/sales", handlers::sales::sales_router().layer(auth_middleware_fn.clone()))
         // Purchases
-        .nest("/api/v1/purchases", handlers::purchases::purchases_router())
-        // Imports
-        .nest("/api/v1/imports", handlers::imports::imports_router())
+        .nest("/api/v1/purchases", handlers::purchases::purchases_router().layer(auth_middleware_fn.clone()))
+        // Inventory
+        .nest("/api/v1/inventory", handlers::inventory::inventory_router().layer(auth_middleware_fn.clone()))
         // Stock
-        .nest("/api/v1/stock", handlers::stock::stock_router())
+        .nest("/api/v1/stock", handlers::stock::stock_router().layer(auth_middleware_fn.clone()))
         // Suppliers
-        .nest("/api/v1/suppliers", handlers::suppliers::suppliers_router())
-
-        .nest("/api/v1/companies", handlers::companies::companies_router())
+        .nest("/api/v1/suppliers", handlers::suppliers::suppliers_router().layer(auth_middleware_fn.clone()))
+        // Imports
+        .nest("/api/v1/imports", handlers::imports::imports_router().layer(auth_middleware_fn.clone()))
+        // Companies
+        .nest("/api/v1/companies", handlers::companies::companies_router().layer(auth_middleware_fn))
         // Inject DbPool into extensions
         .layer(db_injection)
         // Add AppState as Extension

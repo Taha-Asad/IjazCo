@@ -550,7 +550,65 @@ impl SalesInvoice {
         id: Uuid,
         approved_by: Uuid,
     ) -> Result<SalesInvoice, sqlx::Error> {
+        let mut tx = pool.begin().await?;
+        
         let invoice = sqlx::query_as::<Postgres, SalesInvoice>(
+            r#"
+            SELECT * FROM sales_invoices WHERE id = $1
+            "#
+        )
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        if invoice.status != InvoiceStatus::Draft {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        let items: Vec<SalesInvoiceItem> = sqlx::query_as::<Postgres, SalesInvoiceItem>(
+            "SELECT * FROM sales_invoice_items WHERE invoice_id = $1"
+        )
+        .bind(id)
+        .fetch_all(&mut *tx)
+        .await?;
+
+        for item in &items {
+            sqlx::query(
+                r#"
+                UPDATE stock
+                SET quantity_on_hand = quantity_on_hand - $1,
+                    quantity_available = quantity_available - $1,
+                    updated_at = NOW()
+                WHERE item_id = $2 AND branch_id = $3 AND quantity_on_hand >= $1
+                "#
+            )
+            .bind(item.quantity)
+            .bind(item.item_id)
+            .bind(invoice.branch_id)
+            .execute(&mut *tx)
+            .await?;
+
+            sqlx::query(
+                r#"
+                INSERT INTO stock_movements (
+                    company_id, item_id, from_branch_id, to_branch_id,
+                    movement_type, quantity, reference_type, reference_id,
+                    notes, created_by
+                )
+                VALUES ($1, $2, $3, NULL, 'sale', $4, 'sales_invoice', $5, 'Stock deducted for invoice approval', $6)
+                "#
+            )
+            .bind(invoice.company_id)
+            .bind(item.item_id)
+            .bind(invoice.branch_id)
+            .bind(item.quantity)
+            .bind(invoice.id)
+            .bind(approved_by)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        let updated = sqlx::query_as::<Postgres, SalesInvoice>(
             r#"
             UPDATE sales_invoices
             SET status = $1, updated_by = $2, updated_at = NOW()
@@ -561,10 +619,11 @@ impl SalesInvoice {
         .bind(InvoiceStatus::Approved)
         .bind(approved_by)
         .bind(id)
-        .fetch_one(pool)
+        .fetch_one(&mut *tx)
         .await?;
-        
-        Ok(invoice)
+
+        tx.commit().await?;
+        Ok(updated)
     }
     
     pub async fn approve_sqlite(
@@ -572,7 +631,65 @@ impl SalesInvoice {
         id: Uuid,
         approved_by: Uuid,
     ) -> Result<SalesInvoice, sqlx::Error> {
+        let mut tx = pool.begin().await?;
+        
         let invoice_sqlite = sqlx::query_as::<Sqlite, SalesInvoiceSqlite>(
+            "SELECT * FROM sales_invoices WHERE id = ?"
+        )
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        if invoice_sqlite.status != InvoiceStatus::Draft {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        let items_sqlite: Vec<SalesInvoiceItemSqlite> = sqlx::query_as::<Sqlite, SalesInvoiceItemSqlite>(
+            "SELECT * FROM sales_invoice_items WHERE invoice_id = ?"
+        )
+        .bind(id)
+        .fetch_all(&mut *tx)
+        .await?;
+
+        for item in &items_sqlite {
+            sqlx::query(
+                r#"
+                UPDATE stock
+                SET quantity_on_hand = quantity_on_hand - ?,
+                    quantity_available = quantity_available - ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE item_id = ? AND branch_id = ? AND quantity_on_hand >= ?
+                "#
+            )
+            .bind(item.quantity)
+            .bind(item.quantity)
+            .bind(item.item_id)
+            .bind(invoice_sqlite.branch_id)
+            .bind(item.quantity)
+            .execute(&mut *tx)
+            .await?;
+
+            sqlx::query(
+                r#"
+                INSERT INTO stock_movements (
+                    company_id, item_id, from_branch_id, to_branch_id,
+                    movement_type, quantity, reference_type, reference_id,
+                    notes, created_by
+                )
+                VALUES (?, ?, ?, NULL, 'sale', ?, 'sales_invoice', ?, 'Stock deducted for invoice approval', ?)
+                "#
+            )
+            .bind(invoice_sqlite.company_id)
+            .bind(item.item_id)
+            .bind(invoice_sqlite.branch_id)
+            .bind(item.quantity)
+            .bind(invoice_sqlite.id)
+            .bind(approved_by)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        let updated_sqlite = sqlx::query_as::<Sqlite, SalesInvoiceSqlite>(
             r#"
             UPDATE sales_invoices
             SET status = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
@@ -583,10 +700,11 @@ impl SalesInvoice {
         .bind(InvoiceStatus::Approved)
         .bind(approved_by)
         .bind(id)
-        .fetch_one(pool)
+        .fetch_one(&mut *tx)
         .await?;
-        
-        Ok(SalesInvoice::from(invoice_sqlite))
+
+        tx.commit().await?;
+        Ok(SalesInvoice::from(updated_sqlite))
     }
     
     // ===== RECORD PAYMENT =====
