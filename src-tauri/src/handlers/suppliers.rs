@@ -347,5 +347,5 @@ pub async fn delete_supplier(
 pub fn suppliers_router() -> axum::Router<Arc<AppState>> {
     axum::Router::new()
         .route("/", get(list_suppliers).post(create_supplier))
-        .route("/{id}", get(get_supplier).put(update_supplier).delete(delete_supplier))
+        .route("/:id", get(get_supplier).put(update_supplier).delete(delete_supplier))
 }

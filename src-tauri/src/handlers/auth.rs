@@ -3,7 +3,6 @@
 // Handles login, registration, token refresh, and logout
 
 use axum::{extract::State, Json};
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use utoipa::ToSchema;

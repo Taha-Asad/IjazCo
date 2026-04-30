@@ -14,7 +14,7 @@ use utoipa::ToSchema;
 
 use crate::{
     config::DbPool,
-    utils::{error::Result, response::success},
+    utils::{error::Result},
     AppState,
 };
 
@@ -170,7 +170,7 @@ async fn check_database_connection(state: &AppState) -> DatabaseHealth {
 
 // ===== GET UPTIME =====
 fn get_uptime_seconds() -> u64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::{SystemTime};
     
     static START_TIME: std::sync::OnceLock<SystemTime> = std::sync::OnceLock::new();
     let start = START_TIME.get_or_init(|| SystemTime::now());

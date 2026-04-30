@@ -346,5 +346,5 @@ pub fn imports_router() -> axum::Router<Arc<AppState>> {
 
     axum::Router::new()
         .route("/", get(list_imports).post(create_import))
-        .route("/{id}", get(get_import).put(update_import).delete(delete_import))
+        .route("/:id", get(get_import).put(update_import).delete(delete_import))
 }

@@ -35,6 +35,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     Router::new()
         // Health check
         .nest("/api/v1/health", handlers::health::health_router())
+        // Dashboard
+        .nest("/api/v1/dashboard", handlers::dashboard::dashboard_router().layer(auth_middleware_fn.clone()))
         // Authentication (with auth layer for protected routes)
         .nest("/api/v1/auth", handlers::auth::auth_router().layer(auth_middleware_fn.clone()))
         // Protected routes - add auth layer

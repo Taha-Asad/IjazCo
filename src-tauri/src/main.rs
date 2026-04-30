@@ -85,6 +85,13 @@ match app_state.db.as_ref() {
             VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'MAIN', 'Main Warehouse', '123 Main St', 'New York', 'USA', true)
             ON CONFLICT(id) DO NOTHING
         "#).execute(&mut *tx).await?;
+        // Seed admin user (password: admin123)
+        let password_hash = tauri_app_lib::utils::password::hash_password("admin123").unwrap_or_default();
+        sqlx::query(r#"
+            INSERT INTO users (id, company_id, role_id, username, email, password_hash, first_name, last_name, status)
+            VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'admin', 'admin@erp.com', $1, 'Admin', 'User', 'active')
+            ON CONFLICT(id) DO NOTHING
+        "#).bind(password_hash).execute(&mut *tx).await?;
         tx.commit().await?;
         info!("Seed data verified.");
     }

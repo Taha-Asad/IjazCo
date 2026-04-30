@@ -624,10 +624,10 @@ pub fn sales_router() -> axum::Router<Arc<AppState>> {
     use axum::routing::{delete, get, post, put};
 
     axum::Router::new()
-        .route("/", get(list_invoices).post(create_invoice))
+        .route("/invoices", get(list_invoices).post(create_invoice))
         .route("/summary", get(sales_summary))
-        .route("/{id}", get(get_invoice).put(update_invoice).delete(delete_invoice))
-        .route("/{id}/approve", post(approve_invoice))
-        .route("/{id}/payment", post(record_payment))
-        .route("/{id}/items", get(get_invoice_items))
+        .route("/invoices/:id", get(get_invoice).put(update_invoice).delete(delete_invoice))
+        .route("/invoices/:id/approve", post(approve_invoice))
+        .route("/invoices/:id/payment", post(record_payment))
+        .route("/invoices/:id/items", get(get_invoice_items))
 }

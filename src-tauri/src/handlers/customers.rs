@@ -18,7 +18,7 @@ use crate::{
     models::customer::{CreateCustomerRequest, Customer, CustomerWithStats, UpdateCustomerRequest},
     utils::{
         error::{AppError, Result},
-        response::{created, no_content, paginated, success},
+        response::{created, no_content, paginated},
     },
     AppState,
 };
@@ -381,5 +381,5 @@ pub fn customers_router() -> axum::Router<Arc<AppState>> {
 
     axum::Router::new()
         .route("/", get(list_customers).post(create_customer))
-        .route("/{id}", get(get_customer).put(update_customer).delete(delete_customer))
+        .route("/:id", get(get_customer).put(update_customer).delete(delete_customer))
 }

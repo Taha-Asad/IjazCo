@@ -528,8 +528,8 @@ pub fn purchases_router() -> axum::Router<Arc<AppState>> {
 
     axum::Router::new()
         .route("/orders", get(list_orders).post(create_order))
-        .route("/orders/{id}", get(get_order).put(update_order).delete(delete_order))
-        .route("/orders/{id}/submit", post(submit_order))
-        .route("/orders/{id}/receive", post(receive_goods))
-        .route("/orders/{id}/items", get(get_order_items))
+        .route("/orders/:id", get(get_order).put(update_order).delete(delete_order))
+        .route("/orders/:id/submit", post(submit_order))
+        .route("/orders/:id/receive", post(receive_goods))
+        .route("/orders/:id/items", get(get_order_items))
 }

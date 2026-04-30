@@ -512,8 +512,11 @@ pub fn inventory_router() -> axum::Router<Arc<AppState>> {
     use axum::routing::{delete, get, post, put};
 
     axum::Router::new()
-        .route("/", get(list_items).post(create_item))
+        .route("/", get(list_items))
+        .route("/create-item", post(create_item))
         .route("/low-stock", get(low_stock_items))
-        .route("/{id}", get(get_item).put(update_item).delete(delete_item))
-        .route("/{id}/stock", get(get_item_stock))
+        .route("/:id", get(get_item))
+        .route("/:id/update-item" , put(update_item))
+        .route("/:id/delete-item" , delete(delete_item))
+        .route("/:id/stock", get(get_item_stock))
 }

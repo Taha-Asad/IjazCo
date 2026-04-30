@@ -1,0 +1,431 @@
+/* ============================================================
+   LoginPage.css – Figma "Auth" screen (node 16:510)
+   Frame: 1920 × 1200  |  Cards: ~471 × 380 px
+   ============================================================ */
+
+/* ── Root / background ─────────────────────────────────────── */
+.lp-root {
+  min-height: 100vh;
+  background: linear-gradient(145deg, #fafafa 0%, #ffffff 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px 24px 80px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.lp-header {
+  text-align: center;
+  margin-bottom: 48px;
+  animation: lp-fade-up 0.5s ease-out both;
+}
+
+.lp-title {
+  font-size: clamp(1.875rem, 3vw, 3rem);
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+
+.lp-subtitle {
+  font-size: 1.125rem;
+  font-weight: 400;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ── 2 × 2 Grid ────────────────────────────────────────────── */
+.lp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 471px));
+  grid-template-rows: repeat(2, auto);
+  gap: 40px;
+  width: 100%;
+  max-width: 1020px;
+}
+
+@media (max-width: 780px) {
+  .lp-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+/* ── Card base ─────────────────────────────────────────────── */
+.lp-card {
+  position: relative;
+  /* Figma: rgba(255,255,255,0.85) fill + blur(18.72px) backdrop */
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(18.72px);
+  -webkit-backdrop-filter: blur(18.72px);
+  border: 1.56px solid rgba(255, 255, 255, 0.5);
+  border-radius: 18.72px;
+  /* Figma shadow */
+  box-shadow:
+    0px 3.12px 6.24px -1.56px rgba(0, 0, 0, 0.03),
+    0px 6.24px 9.36px -1.56px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  text-align: left;
+  cursor: default;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s ease;
+  animation: lp-fade-up 0.55s ease-out both;
+}
+
+.lp-card:nth-child(1) { animation-delay: 0.05s; }
+.lp-card:nth-child(2) { animation-delay: 0.10s; }
+.lp-card:nth-child(3) { animation-delay: 0.15s; }
+.lp-card:nth-child(4) { animation-delay: 0.20s; }
+
+/* ── Active card ───────────────────────────────────────────── */
+.lp-card--active {
+  cursor: pointer;
+  appearance: none;
+  font: inherit;
+  color: inherit;
+}
+
+.lp-card--active:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0px 16px 48px -8px rgba(0, 0, 0, 0.10),
+    0px 6.24px 9.36px -1.56px rgba(0, 0, 0, 0.05);
+}
+
+.lp-card--active:active {
+  transform: translateY(-1px);
+}
+
+/* ── Disabled card ─────────────────────────────────────────── */
+.lp-card--disabled {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  opacity: 0.60;
+  cursor: not-allowed;
+}
+
+/* ── Gradient accent bar (Figma: 6.24 px height, top-inset 1.56 px) ── */
+.lp-card__bar {
+  display: block;
+  position: absolute;
+  top: 1.56px;
+  left: 1.56px;
+  right: 1.56px;
+  height: 6.24px;
+  border-radius: 18.72px 18.72px 0 0;
+}
+
+.lp-gradient--emerald {
+  background: linear-gradient(90deg, #34d399 0%, #059669 100%);
+}
+
+.lp-gradient--blue {
+  background: linear-gradient(90deg, #3b82f6 0%, #4f46e5 100%);
+}
+
+.lp-gradient--amber {
+  background: linear-gradient(90deg, #fbbf24 0%, #f97316 100%);
+}
+
+/* ── Card body ─────────────────────────────────────────────── */
+.lp-card__body {
+  /* Figma card has 39 px inset on all sides */
+  padding: 39px;
+  /* push content below the gradient bar */
+  padding-top: 46px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Icon wrapper ──────────────────────────────────────────── */
+.lp-card__icon-wrap {
+  /* Figma: 74.88 × 74.88, borderRadius: 12.48px */
+  width: 74.88px;
+  height: 74.88px;
+  border-radius: 12.48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 25px;
+  flex-shrink: 0;
+}
+
+.lp-card__icon-wrap--slate {
+  background: #e2e8f0;
+}
+
+/* ── Card title ────────────────────────────────────────────── */
+.lp-card__title {
+  /* Figma: Inter Bold 31.2 / 43.68px */
+  font-size: 31.2px;
+  line-height: 43.68px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 13.28px;
+}
+
+.lp-card__title--muted {
+  color: #1e293b;
+}
+
+/* ── Card description ──────────────────────────────────────── */
+.lp-card__desc {
+  /* Figma: Inter Regular 21.84 / 35.49px */
+  font-size: 21.84px;
+  line-height: 35.49px;
+  font-weight: 400;
+  color: #64748b;
+  margin: 0 0 46px;
+}
+
+/* ── CTA row ───────────────────────────────────────────────── */
+.lp-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  /* Figma: Inter SemiBold 21.84 / 31.2 px */
+  font-size: 21.84px;
+  line-height: 31.2px;
+  font-weight: 600;
+  transition: gap 0.2s ease;
+}
+
+.lp-card--active:hover .lp-card__cta {
+  gap: 14px;
+}
+
+.lp-card__arrow {
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.lp-card--active:hover .lp-card__arrow {
+  transform: translateX(4px);
+}
+
+/* ── Lock icon (top-right of disabled card) ────────────────── */
+.lp-card__lock {
+  position: absolute;
+  /* Figma: x=407.15, y=23.4 inside a 471.14px wide card */
+  top: 23.4px;
+  right: 26.53px;   /* 471.14 - 407.15 - 37.47 = 26.52 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Status badge (disabled card bottom) ──────────────────── */
+.lp-card__status-badge {
+  /* Figma: background #e2e8f0, borderRadius 9.36px, 298.8 × 37.44px */
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6.24px 12.48px;
+  background: #e2e8f0;
+  border-radius: 9.36px;
+  width: fit-content;
+}
+
+.lp-card__status-text {
+  /* Figma: Inter Medium 18.72 / 24.96px, color #475569 */
+  font-size: 18.72px;
+  line-height: 24.96px;
+  font-weight: 500;
+  color: #475569;
+}
+
+/* ── Overlay ───────────────────────────────────────────────── */
+.lp-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: lp-overlay-in 0.2s ease-out;
+}
+
+@keyframes lp-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Modal ─────────────────────────────────────────────────── */
+.lp-modal {
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow:
+    0 32px 64px -12px rgba(0, 0, 0, 0.20),
+    0 8px 24px -4px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 440px;
+  padding: 40px;
+  animation: lp-modal-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes lp-modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.lp-modal__header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.lp-modal__title {
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 8px;
+}
+
+.lp-modal__subtitle {
+  font-size: 0.9375rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.lp-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lp-modal__error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: 0.875rem;
+  padding: 12px 16px;
+  border-radius: 12px;
+}
+
+.lp-modal__error-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.lp-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lp-modal__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.lp-modal__input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 0.9375rem;
+  color: #0f172a;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.lp-modal__input::placeholder {
+  color: #94a3b8;
+}
+
+.lp-modal__input:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+}
+
+.lp-modal__submit {
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.18s, transform 0.18s;
+}
+
+.lp-modal__submit:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.lp-modal__submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.lp-modal__submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.lp-modal__back {
+  border: none;
+  background: none;
+  font-size: 0.875rem;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: color 0.18s;
+  padding: 0;
+  text-align: center;
+}
+
+.lp-modal__back:hover {
+  color: #475569;
+}
+
+.lp-modal__hint {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+/* ── Shared entrance animation ─────────────────────────────── */
+@keyframes lp-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive tweaks for scaled-down displays ────────────── */
+@media (max-width: 1100px) {
+  .lp-card__title  { font-size: 1.5rem;   line-height: 2rem; }
+  .lp-card__desc   { font-size: 1rem;     line-height: 1.6rem; margin-bottom: 28px; }
+  .lp-card__cta    { font-size: 1rem;     line-height: 1.4rem; }
+  .lp-card__status-text { font-size: 0.875rem; }
+  .lp-card__icon-wrap { width: 60px; height: 60px; }
+  .lp-card__body   { padding: 28px; padding-top: 36px; }
+}
+
+@media (max-width: 780px) {
+  .lp-card__title  { font-size: 1.25rem;  line-height: 1.75rem; }
+  .lp-card__desc   { font-size: 0.9375rem; line-height: 1.5rem; margin-bottom: 20px; }
+  .lp-card__cta    { font-size: 0.9375rem; }
+  .lp-card__body   { padding: 20px; padding-top: 28px; }
+  .lp-card__icon-wrap { width: 52px; height: 52px; }
+  .lp-grid         { gap: 16px; }
+  .lp-root         { padding: 32px 16px 48px; }
+  .lp-modal        { padding: 28px 24px; }
+}
