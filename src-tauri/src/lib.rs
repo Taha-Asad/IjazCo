@@ -57,6 +57,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .nest("/api/v1/suppliers", handlers::suppliers::suppliers_router().layer(auth_middleware_fn.clone()))
         // Imports
         .nest("/api/v1/imports", handlers::imports::imports_router().layer(auth_middleware_fn.clone()))
+        // Reports
+        .nest("/api/v1/reports", handlers::reports::reports_router().layer(auth_middleware_fn.clone()))
+        // Roles
+        .nest("/api/v1/roles", handlers::roles::roles_router().layer(auth_middleware_fn.clone()))
         // Companies
         .nest("/api/v1/companies", handlers::companies::companies_router().layer(auth_middleware_fn))
         // Inject DbPool into extensions

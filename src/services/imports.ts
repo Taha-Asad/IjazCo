@@ -17,6 +17,22 @@ export interface ImportJob {
   updated_at: string;
 }
 
+export interface CreateImportRequest {
+  supplier_id: string;
+  po_id?: string;
+  shipment_date?: string;
+  arrival_date?: string;
+  shipping_method?: string;
+  tracking_number?: string;
+  container_number?: string;
+  freight_cost?: number;
+  insurance_cost?: number;
+  customs_duty?: number;
+  other_charges?: number;
+  notes?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export async function getImports(params?: {
   entity_type?: string;
   status?: string;
@@ -60,28 +76,29 @@ export async function getImport(id: string): Promise<ImportJob> {
   return data.data || data;
 }
 
-export async function uploadImport(entityType: string, file: File): Promise<ImportJob> {
+export async function createImport(payload: CreateImportRequest): Promise<ImportJob> {
   const token = getToken();
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('entity_type', entityType);
-
-  const response = await fetch(`${API_BASE_URL}/imports/upload`, {
+  const response = await fetch(`${API_BASE_URL}/imports`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
-      // Do not set Content-Type, let the browser set it with the boundary
+      'Content-Type': 'application/json',
     },
-    body: formData,
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to upload file' }));
-    throw new Error(error.message || 'Failed to upload file');
+    const error = await response.json().catch(() => ({ message: 'Failed to create import order' }));
+    throw new Error(error.message || 'Failed to create import order');
   }
 
   const data = await response.json();
   return data.data || data;
+}
+
+// Backward-compatible alias used by older pages.
+export async function uploadImport(_entityType: string, _file: File): Promise<ImportJob> {
+  throw new Error('File upload import is not available on this backend. Create import orders instead.');
 }
 
 export async function deleteImport(id: string): Promise<void> {

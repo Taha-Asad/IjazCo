@@ -4,6 +4,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { login, logout, getCurrentUser, isAuthenticated, LoginRequest, UserInfo } from '../services/auth';
+import { useToast } from './ToastContext';
 
 interface AuthContextType {
   user: UserInfo | null;
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     checkAuth();
@@ -34,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (err) {
       console.error('Auth check failed:', err);
+      toast.error('Session expired. Please sign in again.');
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
@@ -54,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(response.user);
     } catch (err: any) {
       setError(err.message || 'Login failed');
+      toast.error(err.message || 'Login failed');
       throw err;
     } finally {
       setLoading(false);
@@ -65,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await logout();
       setUser(null);
+      toast.info('Signed out successfully');
     } finally {
       setLoading(false);
     }

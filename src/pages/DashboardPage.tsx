@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getDashboardStats, type DashboardStats } from '../services/dashboard';
 import { getSalesInvoices, type SalesInvoice } from '../services/sales';
+import { getLowStockAlerts } from '../services/stock';
 import './DashboardPage.css';
 
 // ── Tiny helper ───────────────────────────────────────────────────────────────
@@ -60,17 +61,29 @@ export default function DashboardPage() {
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [expiryItems, setExpiryItems] = useState(EXPIRY_ITEMS);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [s, inv] = await Promise.allSettled([
+      const [s, inv, lowStock] = await Promise.allSettled([
         getDashboardStats(),
         getSalesInvoices({ limit: 5 }),
+        getLowStockAlerts(),
       ]);
       if (s.status === 'fulfilled') setStats(s.value);
       if (inv.status === 'fulfilled') setInvoices(inv.value.invoices ?? []);
+      if (lowStock.status === 'fulfilled' && Array.isArray(lowStock.value) && lowStock.value.length > 0) {
+        const mapped = lowStock.value.slice(0, 8).map((item: any) => ({
+          name: item.item_name || item.name || 'Unnamed Item',
+          batch: item.batch_no || item.sku || 'N/A',
+          days: Number(item.days_to_expiry || item.days || 30),
+          qty: Number(item.quantity_on_hand || item.quantity || 0),
+          urgency: Number(item.days_to_expiry || item.days || 30) <= 20 ? 'red' : Number(item.days_to_expiry || item.days || 30) <= 60 ? 'amber' : 'ok',
+        }));
+        setExpiryItems(mapped as any);
+      }
     } catch (e: any) {
       setError(e.message ?? 'Failed to load dashboard');
     } finally {
@@ -229,7 +242,7 @@ export default function DashboardPage() {
 
           {/* Expiry list */}
           <div className="db-expiry-list">
-            {EXPIRY_ITEMS.map((item, i) => (
+            {expiryItems.map((item, i) => (
               <div key={i} className={`db-expiry-item db-expiry-item--${item.urgency}`}>
                 <div className="db-expiry-item__info">
                   <span className="db-expiry-item__name">{item.name}</span>

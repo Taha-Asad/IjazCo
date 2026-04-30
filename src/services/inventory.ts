@@ -96,7 +96,7 @@ export async function getInventoryItem(id: string): Promise<InventoryItem> {
 
 export async function createInventoryItem(item: CreateInventoryItemRequest): Promise<InventoryItem> {
   const token = getToken();
-  const response = await fetch(`${API_BASE_URL}/inventory/`, {
+  const response = await fetch(`${API_BASE_URL}/inventory/create-item`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -111,7 +111,7 @@ export async function createInventoryItem(item: CreateInventoryItemRequest): Pro
 
 export async function updateInventoryItem(id: string, item: Partial<CreateInventoryItemRequest>): Promise<InventoryItem> {
   const token = getToken();
-  const response = await fetch(`${API_BASE_URL}/inventory/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/inventory/${id}/update-item`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -126,7 +126,7 @@ export async function updateInventoryItem(id: string, item: Partial<CreateInvent
 
 export async function deleteInventoryItem(id: string): Promise<void> {
   const token = getToken();
-  const response = await fetch(`${API_BASE_URL}/inventory/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/inventory/${id}/delete-item`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -173,6 +173,21 @@ export async function getCategories(): Promise<Category[]> {
   });
 
   if (!response.ok) throw new Error('Failed to fetch categories');
+  const data = await response.json();
+  return data.data || [];
+}
+
+export async function getLowStockItems(): Promise<InventoryItem[]> {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/inventory/low-stock`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) throw new Error('Failed to fetch low stock items');
   const data = await response.json();
   return data.data || [];
 }

@@ -104,11 +104,12 @@ pub struct InventoryItem {
 
 // ===== INVENTORY ITEM SQLITE INTERMEDIATE STRUCT =====
 // Uses f64 for Decimal fields and handles type differences for SQLite
+// UUID fields are String since SQLite stores them as TEXT
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct InventoryItemSqlite {
-    pub id: Uuid,
-    pub company_id: Uuid,
-    pub category_id: Option<Uuid>,
+    pub id: String,
+    pub company_id: String,
+    pub category_id: Option<String>,
     pub sku: String,
     pub barcode: Option<String>,
     pub name: String,
@@ -153,8 +154,8 @@ pub struct InventoryItemSqlite {
     
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub created_by: Option<Uuid>,
-    pub updated_by: Option<Uuid>,
+    pub created_by: Option<String>,
+    pub updated_by: Option<String>,
 }
 
 // ===== CREATE INVENTORY ITEM REQUEST =====
@@ -332,9 +333,9 @@ pub struct InventoryItemWithStockRow {
 // ===== SQLite Row Struct for Stock Queries =====
 #[derive(Debug, sqlx::FromRow)]
 pub struct InventoryItemWithStockRowSqlite {
-    pub id: Uuid,
-    pub company_id: Uuid,
-    pub category_id: Option<Uuid>,
+    pub id: String,
+    pub company_id: String,
+    pub category_id: Option<String>,
     pub sku: String,
     pub barcode: Option<String>,
     pub name: String,
@@ -368,8 +369,8 @@ pub struct InventoryItemWithStockRowSqlite {
     pub metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub created_by: Option<Uuid>,
-    pub updated_by: Option<Uuid>,
+    pub created_by: Option<String>,
+    pub updated_by: Option<String>,
     // Stock fields
     pub total_on_hand: i64,
     pub total_allocated: i64,
@@ -459,9 +460,18 @@ fn validate_decimal_percentage(value: &Decimal) -> Result<(), validator::Validat
 impl From<InventoryItemSqlite> for InventoryItem {
     fn from(s: InventoryItemSqlite) -> Self {
         Self {
-            id: s.id,
-            company_id: s.company_id,
-            category_id: s.category_id,
+            id: Uuid::parse_str(&s.id).unwrap_or_else(|_| {
+                tracing::warn!("Failed to parse UUID from SQLite id: {}", s.id);
+                Uuid::nil()
+            }),
+            company_id: Uuid::parse_str(&s.company_id).unwrap_or_else(|_| {
+                tracing::warn!("Failed to parse UUID from SQLite company_id: {}", s.company_id);
+                Uuid::nil()
+            }),
+            category_id: s.category_id.map(|v| Uuid::parse_str(&v).unwrap_or_else(|_| {
+                tracing::warn!("Failed to parse UUID from SQLite category_id: {}", v);
+                Uuid::nil()
+            })),
             sku: s.sku,
             barcode: s.barcode,
             name: s.name,
@@ -499,8 +509,14 @@ impl From<InventoryItemSqlite> for InventoryItem {
             metadata: s.metadata,
             created_at: s.created_at,
             updated_at: s.updated_at,
-            created_by: s.created_by,
-            updated_by: s.updated_by,
+            created_by: s.created_by.map(|v| Uuid::parse_str(&v).unwrap_or_else(|_| {
+                tracing::warn!("Failed to parse UUID from SQLite created_by: {}", v);
+                Uuid::nil()
+            })),
+            updated_by: s.updated_by.map(|v| Uuid::parse_str(&v).unwrap_or_else(|_| {
+                tracing::warn!("Failed to parse UUID from SQLite updated_by: {}", v);
+                Uuid::nil()
+            })),
         }
     }
 }
@@ -569,9 +585,18 @@ impl From<InventoryItemWithStockRowSqlite> for InventoryItemWithStock {
         
         Self {
             item: InventoryItem {
-                id: row.id,
-                company_id: row.company_id,
-                category_id: row.category_id,
+                id: Uuid::parse_str(&row.id).unwrap_or_else(|_| {
+                    tracing::warn!("Failed to parse UUID from SQLite id: {}", row.id);
+                    Uuid::nil()
+                }),
+                company_id: Uuid::parse_str(&row.company_id).unwrap_or_else(|_| {
+                    tracing::warn!("Failed to parse UUID from SQLite company_id: {}", row.company_id);
+                    Uuid::nil()
+                }),
+                category_id: row.category_id.map(|v| Uuid::parse_str(&v).unwrap_or_else(|_| {
+                    tracing::warn!("Failed to parse UUID from SQLite category_id: {}", v);
+                    Uuid::nil()
+                })),
                 sku: row.sku,
                 barcode: row.barcode,
                 name: row.name,
@@ -605,8 +630,14 @@ impl From<InventoryItemWithStockRowSqlite> for InventoryItemWithStock {
                 metadata: row.metadata,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
-                created_by: row.created_by,
-                updated_by: row.updated_by,
+                created_by: row.created_by.map(|v| Uuid::parse_str(&v).unwrap_or_else(|_| {
+                    tracing::warn!("Failed to parse UUID from SQLite created_by: {}", v);
+                    Uuid::nil()
+                })),
+                updated_by: row.updated_by.map(|v| Uuid::parse_str(&v).unwrap_or_else(|_| {
+                    tracing::warn!("Failed to parse UUID from SQLite updated_by: {}", v);
+                    Uuid::nil()
+                })),
             },
             total_quantity_on_hand: total_on_hand,
             total_quantity_allocated: row.total_allocated,

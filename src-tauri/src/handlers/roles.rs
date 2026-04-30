@@ -4,6 +4,7 @@
 
 use axum::{
     extract::{Path, State},
+    routing::get,
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -472,4 +473,11 @@ pub async fn update_role_permissions(
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdatePermissionsRequest {
     pub permissions: serde_json::Value,
+}
+
+pub fn roles_router() -> axum::Router<Arc<AppState>> {
+    axum::Router::new()
+        .route("/", get(list_roles).post(create_role))
+        .route("/:id", get(get_role).put(update_role).delete(delete_role))
+        .route("/:id/permissions", get(get_role_permissions).put(update_role_permissions))
 }

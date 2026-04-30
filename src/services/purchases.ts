@@ -137,3 +137,41 @@ export async function deletePurchaseOrder(id: string): Promise<void> {
   });
   if (!response.ok) throw new Error('Failed to delete purchase order');
 }
+
+export async function submitPurchaseOrder(id: string): Promise<PurchaseOrder> {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/purchases/orders/${id}/submit`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!response.ok) throw new Error('Failed to submit purchase order');
+  const data = await response.json();
+  return data.data || data;
+}
+
+export interface ReceiveGoodsRequest {
+  received_items: Array<{
+    item_id: string;
+    quantity_received: number;
+    unit_cost?: number;
+  }>;
+  notes?: string;
+}
+
+export async function receivePurchaseGoods(id: string, payload: ReceiveGoodsRequest): Promise<PurchaseOrder> {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/purchases/orders/${id}/receive`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error('Failed to receive goods');
+  const data = await response.json();
+  return data.data || data;
+}

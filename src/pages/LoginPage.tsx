@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
 import "./LoginPage.css";
 
 // ── Inline SVG icons extracted directly from Figma ──────────────────────────
@@ -41,18 +42,6 @@ const InventoryIcon = () => (
 const InventoryArrow = () => (
   <svg width="29" height="35" viewBox="0 0 29 35" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M19.2997 18.6932H4.77275V16.3068H19.2997L12.6179 9.625L14.3182 7.95455L23.8637 17.5L14.3182 27.0455L12.6179 25.375L19.2997 18.6932Z" fill="#D97706"/>
-  </svg>
-);
-
-const LockIcon = () => (
-  <svg width="38" height="44" viewBox="0 0 38 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M9.70632 37.2778C8.86604 37.2778 8.14671 36.9786 7.54833 36.3802C6.94995 35.7818 6.65076 35.0625 6.65076 34.2222V18.9445C6.65076 18.1042 6.94995 17.3849 7.54833 16.7865C8.14671 16.1881 8.86604 15.8889 9.70632 15.8889H11.2341V12.8334C11.2341 10.7199 11.9789 8.91843 13.4685 7.42884C14.9581 5.93926 16.7596 5.19447 18.873 5.19447C20.9864 5.19447 22.7879 5.93926 24.2775 7.42884C25.7671 8.91843 26.5119 10.7199 26.5119 12.8334V15.8889H28.0396C28.8799 15.8889 29.5993 16.1881 30.1976 16.7865C30.796 17.3849 31.0952 18.1042 31.0952 18.9445V34.2222C31.0952 35.0625 30.796 35.7818 30.1976 36.3802C29.5993 36.9786 28.8799 37.2778 28.0396 37.2778H9.70632ZM9.70632 34.2222H28.0396V18.9445H9.70632V34.2222ZM18.873 29.6389C19.7133 29.6389 20.4326 29.3397 21.031 28.7413C21.6293 28.143 21.9285 27.4236 21.9285 26.5834C21.9285 25.7431 21.6293 25.0237 21.031 24.4254C20.4326 23.827 19.7133 23.5278 18.873 23.5278C18.0327 23.5278 17.3134 23.827 16.715 24.4254C16.1166 25.0237 15.8174 25.7431 15.8174 26.5834C15.8174 27.4236 16.1166 28.143 16.715 28.7413C17.3134 29.3397 18.0327 29.6389 18.873 29.6389ZM14.2897 15.8889H23.4563V12.8334C23.4563 11.5602 23.0107 10.478 22.1195 9.58683C21.2283 8.69563 20.1461 8.25002 18.873 8.25002C17.5998 8.25002 16.5177 8.69563 15.6265 9.58683C14.7353 10.478 14.2897 11.5602 14.2897 12.8334V15.8889Z" fill="#94A3B8"/>
-  </svg>
-);
-
-const WrenchIcon = () => (
-  <svg width="22" height="25" viewBox="0 0 22 25" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16.9428 20.3125L12.1902 15.5599L14.0131 13.737L18.7657 18.4896L16.9428 20.3125ZM4.96362 20.3125L3.1407 18.4896L9.13029 12.5L7.65459 11.0243L7.04695 11.632L5.94018 10.5252V12.3047L5.33254 12.9123L2.70668 10.2865L3.31432 9.67883H5.09383L4.00876 8.59376L7.09036 5.51216C7.37971 5.22281 7.69076 5.01303 8.02352 4.88282C8.35627 4.75261 8.69626 4.68751 9.04348 4.68751C9.3907 4.68751 9.73069 4.75261 10.0634 4.88282C10.3962 5.01303 10.7073 5.22281 10.9966 5.51216L9.00008 7.50869L10.0851 8.59376L9.47751 9.2014L10.9532 10.6771L12.9063 8.72397C12.8485 8.56483 12.8014 8.39845 12.7653 8.22484C12.7291 8.05123 12.711 7.87762 12.711 7.704C12.711 6.85042 13.004 6.13065 13.5899 5.54472C14.1759 4.95878 14.8956 4.66581 15.7492 4.66581C15.9662 4.66581 16.1724 4.68751 16.3677 4.73091C16.563 4.77432 16.7619 4.83942 16.9645 4.92623L14.8161 7.07466L16.3786 8.63716L18.527 6.48873C18.6283 6.69127 18.697 6.8902 18.7332 7.08551C18.7693 7.28083 18.7874 7.48699 18.7874 7.704C18.7874 8.55759 18.4944 9.27735 17.9085 9.86329C17.3226 10.4492 16.6028 10.7422 15.7492 10.7422C15.5756 10.7422 15.402 10.7277 15.2284 10.6988C15.0548 10.6699 14.8884 10.6192 14.7292 10.5469L4.96362 20.3125Z" fill="#475569"/>
   </svg>
 );
 
@@ -111,6 +100,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -121,13 +111,16 @@ export default function LoginPage() {
       await login({ username, password });
       navigate("/dashboard");
     } catch (err: any) {
-      setError(err.message || "Login failed. Please check your credentials.");
+      const message = err.message || "Login failed. Please check your credentials.";
+      setError(message);
+      toast.error(message, "Authentication Error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCardClick = () => setShowLogin(true);
+  const handleImportsClick = () => setShowLogin(true);
 
   return (
     <main className="lp-root" id="login-page">
@@ -180,36 +173,34 @@ export default function LoginPage() {
           </button>
         ))}
 
-        {/* Disabled "Imports Path" card */}
-        <div
+        {/* Imports card */}
+        <button
           id="imports-path"
-          className="lp-card lp-card--disabled"
-          aria-disabled="true"
+          className="lp-card lp-card--active"
+          type="button"
+          onClick={handleImportsClick}
+          aria-label="Open Imports Path"
         >
-          {/* Lock icon – top-right */}
-          <span className="lp-card__lock" aria-hidden="true">
-            <LockIcon />
-          </span>
-
           <div className="lp-card__body">
             {/* Imports background placeholder (slate) */}
             <div className="lp-card__icon-wrap lp-card__icon-wrap--slate" />
 
             {/* Title */}
-            <h2 className="lp-card__title lp-card__title--muted">Imports Path</h2>
+            <h2 className="lp-card__title">Imports Path</h2>
 
             {/* Description */}
             <p className="lp-card__desc">
               Bulk data migration and external<br />system integrations.
             </p>
 
-            {/* Status badge */}
-            <span className="lp-card__status-badge">
-              <WrenchIcon />
-              <span className="lp-card__status-text">Module under development</span>
+            <span className="lp-card__cta" style={{ color: "#475569" }}>
+              Open Imports
+              <span className="lp-card__arrow">
+                <SalesArrow />
+              </span>
             </span>
           </div>
-        </div>
+        </button>
 
       </div>
 

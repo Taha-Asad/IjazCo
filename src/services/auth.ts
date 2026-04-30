@@ -207,3 +207,27 @@ export function isAuthenticated(): boolean {
 export function getToken(): string | null {
   return localStorage.getItem('access_token');
 }
+
+export async function refreshAuthToken(refreshToken: string): Promise<LoginResponse> {
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!response.ok) throw new Error('Failed to refresh token');
+  return response.json();
+}
+
+export async function changePassword(payload: { current_password: string; new_password: string; confirm_password: string }): Promise<any> {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error('Failed to change password');
+  return response.json();
+}

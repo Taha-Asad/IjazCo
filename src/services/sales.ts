@@ -124,3 +124,57 @@ export async function deleteSalesInvoice(id: string): Promise<void> {
   });
   if (!response.ok) throw new Error('Failed to delete invoice');
 }
+
+export async function approveSalesInvoice(id: string): Promise<SalesInvoice> {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/sales/invoices/${id}/approve`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!response.ok) throw new Error('Failed to approve invoice');
+  const result = await response.json();
+  return result.data || result;
+}
+
+export interface RecordInvoicePaymentRequest {
+  amount_paid: number;
+  payment_method?: string;
+  notes?: string;
+}
+
+export async function recordSalesInvoicePayment(id: string, payload: RecordInvoicePaymentRequest): Promise<SalesInvoice> {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/sales/invoices/${id}/payment`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error('Failed to record payment');
+  const result = await response.json();
+  return result.data || result;
+}
+
+export async function getSalesSummary(params?: { start_date?: string; end_date?: string; branch_id?: string }): Promise<any> {
+  const token = getToken();
+  const queryParams = new URLSearchParams();
+  if (params?.start_date) queryParams.append('start_date', params.start_date);
+  if (params?.end_date) queryParams.append('end_date', params.end_date);
+  if (params?.branch_id) queryParams.append('branch_id', params.branch_id);
+  const url = `${API_BASE_URL}/sales/summary${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!response.ok) throw new Error('Failed to fetch sales summary');
+  const data = await response.json();
+  return data.data || data;
+}

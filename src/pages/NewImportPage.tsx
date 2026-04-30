@@ -1,67 +1,67 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { uploadImport } from '../services/imports';
+import { createImport } from '../services/imports';
+import { getSuppliers, type Supplier } from '../services/suppliers';
 import { useToast } from '../contexts/ToastContext';
 import './ImportsPage.css'; // Reusing styles
 
 export default function NewImportPage() {
-  const [entityType, setEntityType] = useState('inventory');
-  const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDragActive, setIsDragActive] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [form, setForm] = useState({
+    supplier_id: '',
+    po_id: '',
+    shipment_date: new Date().toISOString().slice(0, 10),
+    arrival_date: '',
+    shipping_method: 'Air',
+    tracking_number: '',
+    container_number: '',
+    freight_cost: '',
+    insurance_cost: '',
+    customs_duty: '',
+    other_charges: '',
+    notes: '',
+  });
   const navigate = useNavigate();
   const { success, error } = useToast();
 
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(true);
+  React.useEffect(() => {
+    getSuppliers({ limit: 100 }).then((res) => setSuppliers(res.suppliers || [])).catch(() => {
+      setSuppliers([]);
+    });
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFile = e.dataTransfer.files[0];
-      validateAndSetFile(droppedFile);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      validateAndSetFile(e.target.files[0]);
-    }
-  };
-
-  const validateAndSetFile = (selectedFile: File) => {
-    if (!selectedFile.name.endsWith('.csv') && !selectedFile.name.endsWith('.xlsx')) {
-      error('Please upload a CSV or Excel file.');
-      return;
-    }
-    setFile(selectedFile);
-  };
-
-  const handleUpload = async () => {
-    if (!file) return;
-    
+  const handleSubmit = async () => {
     try {
-      setIsUploading(true);
-      await uploadImport(entityType, file);
-      success('File uploaded successfully. Processing will begin shortly.');
+      if (!form.supplier_id) {
+        error('Supplier is required.');
+        return;
+      }
+      setIsSubmitting(true);
+      await createImport({
+        supplier_id: form.supplier_id,
+        po_id: form.po_id || undefined,
+        shipment_date: form.shipment_date || undefined,
+        arrival_date: form.arrival_date || undefined,
+        shipping_method: form.shipping_method || undefined,
+        tracking_number: form.tracking_number || undefined,
+        container_number: form.container_number || undefined,
+        freight_cost: form.freight_cost ? Number(form.freight_cost) : undefined,
+        insurance_cost: form.insurance_cost ? Number(form.insurance_cost) : undefined,
+        customs_duty: form.customs_duty ? Number(form.customs_duty) : undefined,
+        other_charges: form.other_charges ? Number(form.other_charges) : undefined,
+        notes: form.notes || undefined,
+      });
+      success('Import order created successfully.');
       navigate('/imports');
     } catch (err: any) {
-      error(err.message || 'Failed to upload file');
+      error(err.message || 'Failed to create import order');
     } finally {
-      setIsUploading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -69,77 +69,81 @@ export default function NewImportPage() {
     <div className="imports-page animate-fade-in">
       <div className="imports-header">
         <div>
-          <h1 className="imports-header__title">Upload Data</h1>
-          <p className="imports-header__subtitle">Bulk import your data using a CSV file.</p>
+          <h1 className="imports-header__title">Create Import Order</h1>
+          <p className="imports-header__subtitle">Capture shipping, duty and ETA details for inbound stock.</p>
         </div>
       </div>
 
       <div className="upload-container">
         <div className="upload-card">
-          <div className="form-group">
-            <label htmlFor="entityType">What are you importing?</label>
-            <select
-              id="entityType"
-              className="form-select"
-              value={entityType}
-              onChange={(e) => setEntityType(e.target.value)}
-            >
-              <option value="inventory">Inventory Items</option>
-              <option value="customers">Customers</option>
-              <option value="suppliers">Suppliers</option>
-              <option value="categories">Categories</option>
-            </select>
-          </div>
-
-          <div 
-            className={`dropzone ${isDragActive ? 'dropzone--active' : ''}`}
-            onDragEnter={handleDragEnter}
-            onDragOver={(e) => e.preventDefault()}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <h4>Click to upload or drag and drop</h4>
-            <p>CSV or Excel files only (max. 10MB)</p>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange}
-              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-            />
-          </div>
-
-          {file && (
-            <div className="selected-file animate-slide-up">
-              <div className="selected-file-info">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{color: 'var(--c-brand)'}}>
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                <div>
-                  <div className="selected-file-name">{file.name}</div>
-                  <div className="selected-file-size">{(file.size / 1024).toFixed(1)} KB</div>
-                </div>
-              </div>
-              <button className="btn-clear" onClick={() => setFile(null)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              </button>
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="supplier_id">Supplier *</label>
+              <select id="supplier_id" name="supplier_id" className="form-select" value={form.supplier_id} onChange={handleChange} required>
+                <option value="">Select supplier</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
             </div>
-          )}
+            <div className="form-group">
+              <label htmlFor="po_id">Purchase Order ID</label>
+              <input id="po_id" name="po_id" className="form-input" value={form.po_id} onChange={handleChange} placeholder="Optional PO UUID" />
+            </div>
+            <div className="form-group">
+              <label htmlFor="shipment_date">Shipment Date</label>
+              <input id="shipment_date" name="shipment_date" type="date" className="form-input" value={form.shipment_date} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label htmlFor="arrival_date">Arrival Date</label>
+              <input id="arrival_date" name="arrival_date" type="date" className="form-input" value={form.arrival_date} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label htmlFor="shipping_method">Shipping Method</label>
+              <select id="shipping_method" name="shipping_method" className="form-select" value={form.shipping_method} onChange={handleChange}>
+                <option value="Air">Air</option>
+                <option value="Sea">Sea</option>
+                <option value="Land">Land</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="tracking_number">Tracking Number</label>
+              <input id="tracking_number" name="tracking_number" className="form-input" value={form.tracking_number} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label htmlFor="container_number">Container Number</label>
+              <input id="container_number" name="container_number" className="form-input" value={form.container_number} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label htmlFor="freight_cost">Freight Cost</label>
+              <input id="freight_cost" name="freight_cost" type="number" min="0" step="0.01" className="form-input" value={form.freight_cost} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label htmlFor="insurance_cost">Insurance Cost</label>
+              <input id="insurance_cost" name="insurance_cost" type="number" min="0" step="0.01" className="form-input" value={form.insurance_cost} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label htmlFor="customs_duty">Customs Duty</label>
+              <input id="customs_duty" name="customs_duty" type="number" min="0" step="0.01" className="form-input" value={form.customs_duty} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label htmlFor="other_charges">Other Charges</label>
+              <input id="other_charges" name="other_charges" type="number" min="0" step="0.01" className="form-input" value={form.other_charges} onChange={handleChange} />
+            </div>
+            <div className="form-group form-group--full">
+              <label htmlFor="notes">Notes</label>
+              <textarea id="notes" name="notes" className="form-input" value={form.notes} onChange={handleChange} rows={3} />
+            </div>
+          </div>
 
           <div className="upload-actions">
             <Link to="/imports" className="btn-secondary">Cancel</Link>
             <button 
               className="btn-primary" 
-              disabled={!file || isUploading}
-              onClick={handleUpload}
+              disabled={isSubmitting}
+              onClick={handleSubmit}
             >
-              {isUploading ? 'Uploading...' : 'Start Import'}
+              {isSubmitting ? 'Creating...' : 'Create Import'}
             </button>
           </div>
         </div>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { getDashboardSummary, getMonthlyChartData, ReportSummary, MonthlyData } from '../services/reports';
+import { useState, useEffect } from 'react';
+import { getDashboardSummary, getMonthlyChartData, exportReportsPdf, ReportSummary, MonthlyData } from '../services/reports';
 import { useToast } from '../contexts/ToastContext';
 import './ReportsPage.css';
 
@@ -8,6 +8,24 @@ export default function ReportsPage() {
   const [chartData, setChartData] = useState<MonthlyData[]>([]);
   const [loading, setLoading] = useState(true);
   const { error } = useToast();
+  const [exporting, setExporting] = useState(false);
+  const handleExportPdf = async () => {
+    try {
+      setExporting(true);
+      const blob = await exportReportsPdf({});
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `erp-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      error('Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -77,9 +95,9 @@ export default function ReportsPage() {
           <p className="reports-header__subtitle">Comprehensive overview of your business performance.</p>
         </div>
         <div className="reports-actions">
-          <button className="btn-secondary">
+          <button className="btn-secondary" onClick={handleExportPdf} disabled={exporting}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Export PDF
+            {exporting ? 'Exporting...' : 'Export PDF'}
           </button>
         </div>
       </div>
