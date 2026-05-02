@@ -16,7 +16,7 @@ export function SalesChart() {
   const chartData = data?.data || [];
 
   return (
-    <Card withBorder radius="md" p="lg">
+    <Card withBorder radius="md" p="lg" style={{ minWidth: 0 }}>
       <Group justify="space-between" mb="md">
         <Title order={4}>Sales Trend</Title>
         <Group gap="xs">

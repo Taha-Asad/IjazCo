@@ -62,12 +62,12 @@ export function UserDetailPage() {
   return (
     <Stack>
       <PageHeader
-        title={user.full_name}
+        title={`${user.first_name} ${user.last_name}`}
         description={`@${user.username}`}
         breadcrumbs={[
           { label: "Home", path: "/" },
           { label: "Users", path: "/users" },
-          { label: user.full_name },
+          { label: `${user.first_name} ${user.last_name}` },
         ]}
         action={{
           label: "Back",
@@ -79,10 +79,10 @@ export function UserDetailPage() {
       <Card withBorder radius="md" p="lg">
         <Group mb="md">
           <Avatar size={64} radius="xl" color="blue">
-            {user.full_name.charAt(0)}
+            {user.first_name.charAt(0)}
           </Avatar>
           <div>
-            <Title order={3}>{user.full_name}</Title>
+            <Title order={3}>{user.first_name} {user.last_name}</Title>
             <Group gap="xs">
               <Badge color={user.is_active ? "green" : "gray"}>
                 {user.is_active ? "Active" : "Inactive"}
@@ -135,7 +135,13 @@ export function UserDetailPage() {
           <Tabs.Panel value="edit" pt="md">
             <UserForm
               mode="edit"
-              initialValues={user}
+              initialValues={{
+                first_name: user.first_name,
+                last_name: user.last_name,
+                email: user.email,
+                role_id: user.role_id,
+                is_active: user.is_active,
+              }}
               onSubmit={async (v) => {
                 await updateMutation.mutateAsync(v);
               }}

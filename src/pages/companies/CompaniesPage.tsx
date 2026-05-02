@@ -13,21 +13,27 @@ import { CompanyForm } from "../../components/forms/CompanyForm";
 import { companiesApi } from "../../api/companies";
 import { useDebounce } from "../../hooks/useDebounce";
 import { formatDate } from "../../utils/formatters";
+import { useAuthStore } from "../../store";
 
 const PAGE_SIZE = 20;
 
 export function CompaniesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [opened, { open, close }] = useDisclosure(false);
   const debouncedSearch = useDebounce(search, 400);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["companies", page, debouncedSearch],
     queryFn: () =>
-      companiesApi.list({ page, per_page: PAGE_SIZE, search: debouncedSearch }),
+      companiesApi.list({
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        ...(debouncedSearch?.trim() && { search: debouncedSearch }),
+      }),
   });
 
   const createMutation = useMutation({

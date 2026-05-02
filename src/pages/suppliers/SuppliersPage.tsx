@@ -29,7 +29,12 @@ export function SuppliersPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["suppliers", page, debouncedSearch],
     queryFn: () =>
-      suppliersApi.list({ page, per_page: PAGE_SIZE, search: debouncedSearch }),
+      suppliersApi.list({
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        company_id: user?.company_id,
+        ...(debouncedSearch?.trim() && { search: debouncedSearch }),
+      }),
   });
 
   const createMutation = useMutation({
@@ -43,6 +48,14 @@ export function SuppliersPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       close();
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || "Failed to create supplier";
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
     },
   });
 

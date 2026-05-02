@@ -123,8 +123,8 @@ pub async fn list_stock(
     
     Ok(paginated(
         stock,
-        params.pagination.page,
-        params.pagination.per_page,
+        params.pagination.page(),
+        params.pagination.per_page(),
         total_count,
     ))
 }
@@ -456,8 +456,8 @@ pub async fn list_movements(
     
     Ok(paginated(
         movements,
-        params.pagination.page,
-        params.pagination.per_page,
+        params.pagination.page(),
+        params.pagination.per_page(),
         total_count,
     ))
 }

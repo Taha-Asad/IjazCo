@@ -33,15 +33,52 @@ export function RolesPage() {
   const [opened, { open, close }] = useDisclosure(false);
   const debouncedSearch = useDebounce(search, 400);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["roles", page, debouncedSearch],
-    queryFn: () =>
-      rolesApi.list({ page, per_page: PAGE_SIZE, search: debouncedSearch }),
+  // Refetch user data on mount to ensure company_id is loaded
+  const { isLoading: userLoading } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: async () => {
+      const res = await authApi.me();
+      if (res.data?.company_id) {
+        useAuthStore.getState().setUser(res.data);
+      }
+      return res.data;
+    },
+    enabled: !!user && !user?.company_id,
   });
 
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["roles", page, debouncedSearch],
+    queryFn: () =>
+      rolesApi.list({
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        ...(debouncedSearch?.trim() && { search: debouncedSearch }),
+      }),
+  });
+
+  if (error) {
+    notifications.show({
+      title: "Error",
+      message: (error as any)?.response?.data?.message || "Failed to load roles",
+      color: "red",
+    });
+  }
+
   const createMutation = useMutation({
-    mutationFn: (values: any) =>
-      rolesApi.create({ ...values, company_id: user?.company_id }),
+    mutationFn: (values: any) => {
+      if (!user?.company_id) {
+        // Try to get fresh user data
+        return authApi.me().then((res) => {
+          const freshUser = res.data;
+          if (!freshUser?.company_id) {
+            throw new Error("Company ID not found. Please log in again.");
+          }
+          useAuthStore.getState().setUser(freshUser);
+          return rolesApi.create({ ...values, company_id: freshUser.company_id });
+        });
+      }
+      return rolesApi.create({ ...values, company_id: user.company_id });
+    },
     onSuccess: () => {
       notifications.show({
         title: "Created",
@@ -50,6 +87,14 @@ export function RolesPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["roles"] });
       close();
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || "Failed to create role";
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
     },
   });
 
@@ -79,9 +124,9 @@ export function RolesPage() {
       />
       <SearchInput value={search} onChange={setSearch} w={280} />
       <DataTable
-        records={data?.data || []}
+        records={data?.data || data || []}
         fetching={isLoading}
-        totalRecords={data?.total_items || 0}
+        totalRecords={data?.total_items || data?.length || 0}
         recordsPerPage={PAGE_SIZE}
         page={page}
         onPageChange={setPage}

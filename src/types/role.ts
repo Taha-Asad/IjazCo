@@ -12,6 +12,8 @@ export interface Role {
 export interface CreateRoleRequest {
   name: string;
   description?: string;
+  role_type: string;
+  company_id: string;
   permissions?: Record<string, string[]>;
 }
 

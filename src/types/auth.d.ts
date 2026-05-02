@@ -1,3 +1,18 @@
+export interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: AuthUser;
+}
+
+export interface SuccessResponse<T = unknown> {
+  status: number;
+  message: string;
+  data: T;
+  timestamp: string;
+}
+
 export interface LoginRequest {
   username: string;
   password: string;
@@ -7,8 +22,13 @@ export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
-  full_name: string;
+  password_confirmation: string;
+  first_name: string;
+  last_name: string;
+  company_name?: string;
   company_id?: string;
+  phone?: string;
+  role_id: string;
 }
 
 export interface AuthTokens {
@@ -22,12 +42,11 @@ export interface AuthUser {
   id: string;
   username: string;
   email: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   company_id: string;
   role_id: string;
-  role_name: string;
-  is_active: boolean;
-  permissions: Record<string, string[]>;
+  role_name?: string;
 }
 
 export interface ChangePasswordRequest {

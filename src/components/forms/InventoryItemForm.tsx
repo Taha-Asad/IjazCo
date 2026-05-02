@@ -10,7 +10,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { z } from "zod";
-import { zodResolver } from "mantine-form-zod-resolver";
+import { zod4Resolver } from "mantine-form-zod-resolver";
 import { useQuery } from "@tanstack/react-query";
 import { categoriesApi } from "../../api/categories";
 
@@ -46,7 +46,7 @@ export function InventoryItemForm({
     })) || [];
 
   const form = useForm({
-    validate: zodResolver(schema),
+    validate: zod4Resolver(schema),
     initialValues: {
       name: initialValues?.name || "",
       sku: initialValues?.sku || "",

@@ -8,10 +8,11 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { z } from "zod";
-import { zodResolver } from "mantine-form-zod-resolver";
+import { zod4Resolver } from "mantine-form-zod-resolver";
 
 const schema = z.object({
   name: z.string().min(2, "Supplier name required"),
+  supplier_code: z.string().min(1, "Supplier code required"),
   email: z.string().email("Valid email").optional().or(z.literal("")),
   phone: z.string().optional(),
   contact_person: z.string().optional(),
@@ -33,22 +34,29 @@ export function SupplierForm({
   loading,
 }: SupplierFormProps) {
   const form = useForm({
-    validate: zodResolver(schema),
+    validate: zod4Resolver(schema),
     initialValues: {
-      name: initialValues?.name || "",
-      email: initialValues?.email || "",
-      phone: initialValues?.phone || "",
-      contact_person: initialValues?.contact_person || "",
-      payment_terms: initialValues?.payment_terms || 30,
-      city: initialValues?.city || "",
-      country: initialValues?.country || "",
-      address: initialValues?.address || "",
+      name: initialValues?.name ?? "",
+      supplier_code: initialValues?.supplier_code ?? "",
+      email: initialValues?.email ?? "",
+      phone: initialValues?.phone ?? "",
+      contact_person: initialValues?.contact_person ?? "",
+      payment_terms: initialValues?.payment_terms ?? 30,
+      city: initialValues?.city ?? "",
+      country: initialValues?.country ?? "",
+      address: initialValues?.address ?? "",
     },
   });
 
   return (
     <form onSubmit={form.onSubmit(onSubmit)}>
       <Stack>
+        <TextInput
+          label="Supplier Code"
+          placeholder="SUP-001"
+          required
+          {...form.getInputProps("supplier_code")}
+        />
         <TextInput
           label="Supplier Name"
           placeholder="Scientific Supplies Co."

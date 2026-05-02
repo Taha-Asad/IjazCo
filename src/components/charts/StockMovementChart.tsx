@@ -26,7 +26,7 @@ export function StockMovementChart({ itemId }: { itemId?: string }) {
   }));
 
   return (
-    <Card withBorder radius="md" p="lg">
+    <Card withBorder radius="md" p="lg" style={{ minWidth: 0 }}>
       <Group justify="space-between" mb="md">
         <Title order={4}>Stock Movements</Title>
         <Select

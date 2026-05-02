@@ -7,6 +7,7 @@ import { SearchInput } from "../../components/common/SearchInput";
 import { stockApi } from "../../api/stock";
 import { useDebounce } from "../../hooks/useDebounce";
 import { formatDateTime } from "../../utils/formatters";
+import { useAuthStore } from "../../store/authStore";
 
 const PAGE_SIZE = 30;
 
@@ -19,6 +20,7 @@ const MOVEMENT_COLORS: Record<string, string> = {
 };
 
 export function StockMovementsPage() {
+  const { user } = useAuthStore();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
@@ -26,7 +28,12 @@ export function StockMovementsPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["stock-movements", page, debouncedSearch, typeFilter],
-    queryFn: () => stockApi.listMovements({ page, per_page: PAGE_SIZE }),
+    queryFn: () =>
+      stockApi.listMovements({
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        company_id: user?.company_id,
+      }),
   });
 
   return (

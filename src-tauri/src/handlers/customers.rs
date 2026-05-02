@@ -140,8 +140,8 @@ pub async fn list_customers(
     
     Ok(paginated(
         customers,
-        params.pagination.page,
-        params.pagination.per_page,
+        params.pagination.page(),
+        params.pagination.per_page(),
         total_count,
     ))
 }

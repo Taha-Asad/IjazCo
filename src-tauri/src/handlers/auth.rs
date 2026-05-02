@@ -500,8 +500,8 @@ pub async fn change_password(
 )]
 pub async fn me(
     auth_user: AuthUser,
-) -> Result<Json<UserInfo>> {
-    Ok(Json(UserInfo {
+) -> Result<impl axum::response::IntoResponse> {
+    let user_info = UserInfo {
         id: auth_user.id,
         username: auth_user.username,
         email: auth_user.email,
@@ -509,7 +509,8 @@ pub async fn me(
         last_name: auth_user.last_name,
         role_id: auth_user.role_id,
         company_id: auth_user.company_id,
-    }))
+    };
+    Ok(success("Current user", user_info))
 }
 
 // ===== VERIFY EMAIL REQUEST =====

@@ -141,8 +141,8 @@ pub async fn list_suppliers(
     
     Ok(paginated(
         suppliers,
-        params.pagination.page,
-        params.pagination.per_page,
+        params.pagination.page(),
+        params.pagination.per_page(),
         total_count,
     ))
 }

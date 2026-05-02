@@ -180,3 +180,4 @@ panic = "abort"   # Abort on panic for smaller binary
 [profile.dev]
 # Development profile for faster compilation
 opt-level = 0 # No optimization for faster builds
+

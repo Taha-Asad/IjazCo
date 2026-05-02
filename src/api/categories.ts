@@ -15,24 +15,26 @@ export interface Category {
 
 export interface CreateCategoryRequest {
   name: string;
+  code: string;
   description?: string;
   parent_id?: string;
   company_id: string;
+  sort_order?: number;
 }
 
 export const categoriesApi = {
   list: (params?: PaginationParams & { parent_id?: string }) =>
-    apiClient.get<PaginatedResponse<Category>>("/categories", { params }),
+    apiClient.get<PaginatedResponse<Category>>("categories", { params }),
 
   getById: (id: string) =>
-    apiClient.get<ApiResponse<Category>>(`/categories/${id}`),
+    apiClient.get<ApiResponse<Category>>(`categories/${id}`),
 
   create: (data: CreateCategoryRequest) =>
-    apiClient.post<ApiResponse<Category>>("/categories", data),
+    apiClient.post<ApiResponse<Category>>("categories", data),
 
   update: (id: string, data: Partial<CreateCategoryRequest>) =>
-    apiClient.put<ApiResponse<Category>>(`/categories/${id}`, data),
+    apiClient.put<ApiResponse<Category>>(`categories/${id}`, data),
 
   delete: (id: string) =>
-    apiClient.delete<ApiResponse<null>>(`/categories/${id}`),
+    apiClient.delete<ApiResponse<null>>(`categories/${id}`),
 };

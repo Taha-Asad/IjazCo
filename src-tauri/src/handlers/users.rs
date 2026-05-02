@@ -24,25 +24,39 @@ use crate::{
 pub struct PaginationParams {
     // Page number (1-based)
     #[serde(default = "default_page")]
-    pub page: i64,
+    pub page: Option<String>,
     
     // Items per page
     #[serde(default = "default_per_page")]
-    pub per_page: i64,
+    pub per_page: Option<String>,
 }
 
-fn default_page() -> i64 { 1 }
-fn default_per_page() -> i64 { 20 }
+fn default_page() -> Option<String> { Some("1".to_string()) }
+fn default_per_page() -> Option<String> { Some("20".to_string()) }
 
 impl PaginationParams {
+    // Get page as i64
+    pub fn page(&self) -> i64 {
+        self.page.as_ref()
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or(1)
+    }
+    
+    // Get per_page as i64
+    pub fn per_page(&self) -> i64 {
+        self.per_page.as_ref()
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or(20)
+    }
+    
     // Calculate SQL OFFSET
     pub fn offset(&self) -> i64 {
-        (self.page - 1) * self.per_page
+        (self.page() - 1) * self.per_page()
     }
     
     // Get SQL LIMIT
     pub fn limit(&self) -> i64 {
-        self.per_page
+        self.per_page()
     }
 }
 
@@ -153,8 +167,8 @@ pub async fn list_users(
     // Ensure params.pagination fields are i32/i64 as expected by your helper
     Ok(paginated(
         safe_users,
-        params.pagination.page,
-        params.pagination.per_page,
+        params.pagination.page(),
+        params.pagination.per_page(),
         total_count,
     ))
 }

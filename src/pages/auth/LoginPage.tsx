@@ -21,7 +21,7 @@ import { notifications } from "@mantine/notifications";
 import { IconAlertCircle, IconLock } from "@tabler/icons-react";
 import { authApi } from "../../api/auth";
 import { useAuthStore } from "../../store/authStore";
-import { zodResolver } from "mantine-form-zod-resolver";
+import { zod4Resolver } from "mantine-form-zod-resolver";
 
 const schema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -35,7 +35,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm({
-    validate: zodResolver(schema),
+    validate: zod4Resolver(schema),
     initialValues: { username: "", password: "" },
   });
 
@@ -44,18 +44,20 @@ export function LoginPage() {
     setError(null);
     try {
       const res = await authApi.login(values);
-      const { user, tokens } = res.data;
-      setUser(user);
-      setTokens(tokens.access_token, tokens.refresh_token);
+      // The login response returns { user: UserInfo } directly
+      const userData = res.user || res.data?.user || res.data;
+      setUser(userData);
+      setTokens(res.access_token, res.refresh_token || res.data?.refresh_token);
       notifications.show({
         title: "Welcome back!",
-        message: `Hello, ${user.full_name}`,
+        message: `Hello, ${userData.first_name} ${userData.last_name}`,
         color: "green",
       });
       navigate("/dashboard");
     } catch (err: any) {
+      const data = err?.response?.data;
       setError(
-        err?.response?.data?.message ||
+        data?.message ||
           "Invalid credentials. Please try again.",
       );
     } finally {

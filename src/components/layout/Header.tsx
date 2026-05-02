@@ -62,11 +62,11 @@ export function Header() {
           <Menu.Target>
             <Group style={{ cursor: "pointer" }} gap="xs">
               <Avatar size="sm" radius="xl" color="erp-green">
-                {user?.full_name?.charAt(0).toUpperCase()}
+                {user?.first_name?.charAt(0).toUpperCase()}
               </Avatar>
               <div>
                 <Text size="sm" fw={500} lineClamp={1}>
-                  {user?.full_name}
+                  {user?.first_name} {user?.last_name}
                 </Text>
                 <Text size="xs" c="dimmed" lineClamp={1}>
                   {user?.role_name}

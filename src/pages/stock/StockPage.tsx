@@ -11,11 +11,13 @@ import { StockAdjustForm } from "../../components/forms/StockAdjustForm";
 import { StockTransferForm } from "../../components/forms/StockTransferForm";
 import { stockApi, type StockRecord } from "../../api/stock";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useAuthStore } from "../../store/authStore";
 
 const PAGE_SIZE = 20;
 
 export function StockPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<StockRecord | null>(null);
@@ -28,7 +30,12 @@ export function StockPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["stock", page, debouncedSearch],
     queryFn: () =>
-      stockApi.list({ page, per_page: PAGE_SIZE, search: debouncedSearch }),
+      stockApi.list({
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        company_id: user?.company_id,
+        ...(debouncedSearch?.trim() && { search: debouncedSearch }),
+      }),
   });
 
   const adjustMutation = useMutation({

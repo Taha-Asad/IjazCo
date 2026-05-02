@@ -36,15 +36,21 @@ export function CategoriesPage() {
     queryKey: ["categories", page, debouncedSearch],
     queryFn: () =>
       categoriesApi.list({
-        page,
-        per_page: PAGE_SIZE,
-        search: debouncedSearch,
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        company_id: user?.company_id,
+        ...(debouncedSearch?.trim() && { search: debouncedSearch }),
       }),
   });
 
   const createMutation = useMutation({
     mutationFn: (v: any) =>
-      categoriesApi.create({ ...v, company_id: user?.company_id }),
+      categoriesApi.create({ 
+        ...v, 
+        company_id: user?.company_id,
+        code: v.code || v.name?.toUpperCase().replace(/\s+/g, '-').slice(0, 10) || 'DEFAULT',
+        sort_order: v.sort_order || 0
+      }),
     onSuccess: () => {
       notifications.show({
         title: "Created",
@@ -53,6 +59,14 @@ export function CategoriesPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       close();
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || "Failed to create category";
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
     },
   });
 

@@ -31,7 +31,7 @@ export function InventoryChart() {
   const totalValue = valuations.reduce((s, v) => s + v.total_value, 0);
 
   return (
-    <Card withBorder radius="md" p="lg">
+    <Card withBorder radius="md" p="lg" style={{ minWidth: 0 }}>
       <Title order={4} mb="md">
         Inventory Valuation by Branch
       </Title>

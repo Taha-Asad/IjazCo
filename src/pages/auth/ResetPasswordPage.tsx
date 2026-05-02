@@ -10,7 +10,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { z } from "zod";
-import { zodResolver } from "mantine-form-zod-resolver";
+import { zod4Resolver } from "mantine-form-zod-resolver";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { notifications } from "@mantine/notifications";
@@ -35,7 +35,7 @@ export function ResetPasswordPage() {
   const [done, setDone] = useState(false);
 
   const form = useForm({
-    validate: zodResolver(schema),
+    validate: zod4Resolver(schema),
     initialValues: { new_password: "", confirm_password: "" },
   });
 

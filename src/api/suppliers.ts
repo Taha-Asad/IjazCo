@@ -25,6 +25,7 @@ export interface Supplier {
 
 export interface CreateSupplierRequest {
   name: string;
+  supplier_code: string;
   email?: string;
   phone?: string;
   address?: string;
@@ -37,17 +38,17 @@ export interface CreateSupplierRequest {
 
 export const suppliersApi = {
   list: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<Supplier>>("/suppliers", { params }),
+    apiClient.get<PaginatedResponse<Supplier>>("suppliers", { params }),
 
   getById: (id: string) =>
-    apiClient.get<ApiResponse<Supplier>>(`/suppliers/${id}`),
+    apiClient.get<ApiResponse<Supplier>>(`suppliers/${id}`),
 
   create: (data: CreateSupplierRequest) =>
-    apiClient.post<ApiResponse<Supplier>>("/suppliers", data),
+    apiClient.post<ApiResponse<Supplier>>("suppliers", data),
 
   update: (id: string, data: Partial<CreateSupplierRequest>) =>
-    apiClient.put<ApiResponse<Supplier>>(`/suppliers/${id}`, data),
+    apiClient.put<ApiResponse<Supplier>>(`suppliers/${id}`, data),
 
   delete: (id: string) =>
-    apiClient.delete<ApiResponse<null>>(`/suppliers/${id}`),
+    apiClient.delete<ApiResponse<null>>(`suppliers/${id}`),
 };

@@ -25,12 +25,14 @@ import { openConfirmModal } from "../../components/common/ConfirmModal";
 import { purchasesApi, type PurchaseOrder } from "../../api/purchases";
 import { useDebounce } from "../../hooks/useDebounce";
 import { formatCurrency, formatDate } from "../../utils/formatters";
+import { useAuthStore } from "../../store/authStore";
 
 const PAGE_SIZE = 20;
 
 export function PurchasesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -40,9 +42,10 @@ export function PurchasesPage() {
     queryKey: ["purchases", page, debouncedSearch, statusFilter],
     queryFn: () =>
       purchasesApi.list({
-        page,
-        per_page: PAGE_SIZE,
-        search: debouncedSearch,
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        company_id: user?.company_id,
+        ...(debouncedSearch?.trim() && { search: debouncedSearch }),
         status: statusFilter || undefined,
       }),
   });

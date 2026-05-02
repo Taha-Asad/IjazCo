@@ -2,7 +2,8 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   company_id: string;
   role_id: string;
   role_name?: string;
@@ -17,13 +18,15 @@ export interface CreateUserRequest {
   username: string;
   email: string;
   password: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   role_id: string;
   company_id: string;
 }
 
 export interface UpdateUserRequest {
-  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   email?: string;
   role_id?: string;
 }

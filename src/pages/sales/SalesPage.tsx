@@ -26,6 +26,7 @@ import { PageHeader } from "../../components/common/PageHeader";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { openConfirmModal } from "../../components/common/ConfirmModal";
+import { useAuthStore } from "../../store/authStore";
 import { SalesInvoice } from "../../types";
 
 const PAGE_SIZE = 20;
@@ -33,6 +34,7 @@ const PAGE_SIZE = 20;
 export function SalesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -42,9 +44,10 @@ export function SalesPage() {
     queryKey: ["sales", page, debouncedSearch, statusFilter],
     queryFn: () =>
       salesApi.list({
-        page,
-        per_page: PAGE_SIZE,
-        search: debouncedSearch,
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        company_id: user?.company_id,
+        ...(debouncedSearch?.trim() && { search: debouncedSearch }),
         status: statusFilter || undefined,
       }),
   });

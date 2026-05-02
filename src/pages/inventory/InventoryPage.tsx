@@ -25,6 +25,7 @@ import { openConfirmModal } from "@/components/common/ConfirmModal";
 import { inventoryApi } from "@/api/inventory";
 import { formatCurrency } from "@/utils/formatters";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useAuthStore } from "@/store/authStore";
 import type { InventoryItem } from "@/types";
 
 const PAGE_SIZE = 20;
@@ -32,6 +33,7 @@ const PAGE_SIZE = 20;
 export function InventoryPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
@@ -39,7 +41,12 @@ export function InventoryPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["inventory", page, debouncedSearch],
     queryFn: () =>
-      inventoryApi.list({ page, per_page: PAGE_SIZE, search: debouncedSearch }),
+      inventoryApi.list({
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        company_id: user?.company_id,
+        ...(debouncedSearch?.trim() && { search: debouncedSearch }),
+      }),
   });
 
   const deleteMutation = useMutation({

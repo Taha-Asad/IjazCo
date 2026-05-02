@@ -1,87 +1,128 @@
-import { TextInput, PasswordInput, Button, Stack, Title, Text, Group } from "@mantine/core";
+import {
+  TextInput,
+  PasswordInput,
+  Button,
+  Paper,
+  Title,
+  Text,
+  Container,
+  Stack,
+  Anchor,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { z } from "zod";
+import { zodResolver } from "mantine-form-zod-resolver";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { authApi } from "../../api/auth";
+import { useAuthStore } from "../../store/authStore";
+
+const schema = z
+  .object({
+    full_name: z.string().min(2, "Full name required"),
+    username: z.string().min(3, "Username min 3 characters"),
+    email: z.string().email("Valid email required"),
+    password: z.string().min(8, "Password min 8 characters"),
+    confirm_password: z.string(),
+  })
+  .refine((d) => d.password === d.confirm_password, {
+    message: "Passwords do not match",
+    path: ["confirm_password"],
+  });
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const registerMutation = useMutation({
-    mutationFn: authApi.register,
-    onSuccess: () => {
-      notifications.show({
-        title: "Registered",
-        message: "Account created successfully. Please login.",
-        color: "green",
-      });
-      navigate("/login");
-    },
-    onError: (error: any) => {
-      notifications.show({
-        title: "Registration failed",
-        message: error.message || "An error occurred.",
-        color: "red",
-      });
-    },
-  });
+  const { setUser, setTokens } = useAuthStore();
+  const [loading, setLoading] = useState(false);
 
   const form = useForm({
+    validate: zodResolver(schema),
     initialValues: {
       full_name: "",
+      username: "",
       email: "",
       password: "",
       confirm_password: "",
     },
-    validate: {
-      full_name: (v) => (!v ? "Name required" : null),
-      email: (v) =>
-        !v || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "Invalid email" : null,
-      password: (v) =>
-        v && v.length < 8 ? "Password must be at least 8 characters" : null,
-      confirm_password: (v, values) =>
-        v !== values.password ? "Passwords do not match" : null,
-    },
   });
 
+  const handleSubmit = async (values: typeof form.values) => {
+    setLoading(true);
+    try {
+      const res = await authApi.register({
+        full_name: values.full_name,
+        username: values.username,
+        email: values.email,
+        password: values.password,
+      });
+      setUser(res.data.user);
+      setTokens(res.data.tokens.access_token, res.data.tokens.refresh_token);
+      notifications.show({
+        title: "Welcome!",
+        message: "Account created.",
+        color: "green",
+      });
+      navigate("/dashboard");
+    } catch (err: any) {
+      notifications.show({
+        title: "Error",
+        message: err?.response?.data?.message || "Registration failed.",
+        color: "red",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <form onSubmit={form.onSubmit((v) => registerMutation.mutateAsync(v))}>
-      <Stack>
-        <Title order={2} ta="center">Create Account</Title>
-        <Text c="dimmed" size="sm" ta="center">
-          Already have an account?{" "}
-          <Text component={Link} to="/login" span c="blue" fw={500}>
-            Sign in
-          </Text>
-        </Text>
-        <TextInput
-          label="Full Name"
-          placeholder="John Doe"
-          required
-          {...form.getInputProps("full_name")}
-        />
-        <TextInput
-          label="Email"
-          placeholder="john@example.com"
-          required
-          {...form.getInputProps("email")}
-        />
-        <PasswordInput
-          label="Password"
-          placeholder="••••••••"
-          required
-          {...form.getInputProps("password")}
-        />
-        <PasswordInput
-          label="Confirm Password"
-          placeholder="••••••••"
-          required
-          {...form.getInputProps("confirm_password")}
-        />
-        <Button type="submit" loading={registerMutation.isPending}>
-          Register
-        </Button>
-      </Stack>
-    </form>
+    <Container size={440} my={80}>
+      <Title ta="center" fw={900}>
+        Create Account
+      </Title>
+      <Text c="dimmed" size="sm" ta="center" mt={5}>
+        Already have an account?{" "}
+        <Anchor component={Link} to="/login">
+          Sign in
+        </Anchor>
+      </Text>
+      <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+          <Stack>
+            <TextInput
+              label="Full Name"
+              placeholder="John Doe"
+              required
+              {...form.getInputProps("full_name")}
+            />
+            <TextInput
+              label="Username"
+              placeholder="john.doe"
+              required
+              {...form.getInputProps("username")}
+            />
+            <TextInput
+              label="Email"
+              placeholder="john@example.com"
+              required
+              {...form.getInputProps("email")}
+            />
+            <PasswordInput
+              label="Password"
+              required
+              {...form.getInputProps("password")}
+            />
+            <PasswordInput
+              label="Confirm Password"
+              required
+              {...form.getInputProps("confirm_password")}
+            />
+            <Button type="submit" fullWidth loading={loading}>
+              Create Account
+            </Button>
+          </Stack>
+        </form>
+      </Paper>
+    </Container>
   );
 }

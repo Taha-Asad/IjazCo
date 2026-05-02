@@ -122,8 +122,8 @@ pub async fn list_orders(
     
     Ok(paginated(
         orders,
-        params.pagination.page,
-        params.pagination.per_page,
+        params.pagination.page(),
+        params.pagination.per_page(),
         total_count,
     ))
 }

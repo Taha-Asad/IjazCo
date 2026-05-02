@@ -9,10 +9,10 @@ use uuid::Uuid;
 use validator::Validate;
 use utoipa::ToSchema;
 use rust_decimal::Decimal;
-use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 // ===== SUPPLIER MODEL =====
 // Main supplier entity for purchase transactions
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema , FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Supplier {
     // Primary key
     pub id: Uuid,
@@ -20,70 +20,56 @@ pub struct Supplier {
     // Foreign key - company/tenant
     pub company_id: Uuid,
     
-    // Unique supplier code (e.g., SUPP-001)
-    #[schema(example = "SUPP-001")]
+    // Supplier code (unique within company)
     pub supplier_code: String,
     
     // Supplier name
-    #[schema(example = "Scientific Equipment Co.")]
     pub name: String,
     
-    // Primary contact person
-    #[schema(example = "Jane Doe")]
+    // Contact person
     pub contact_person: Option<String>,
     
-    // Email address
-    #[schema(example = "sales@sciequipco.com")]
+    // Email
     pub email: Option<String>,
     
-    // Phone number
-    #[schema(example = "+92-300-0000000")]
+    // Phone
     pub phone: Option<String>,
     
-    // Website URL
-    #[schema(example = "https://sciequipco.com")]
+    // Website
     pub website: Option<String>,
     
     // Tax ID / VAT number
-    #[schema(example = "VAT-987654321")]
     pub tax_id: Option<String>,
     
-    // Physical address
+    // Address
     pub address: Option<String>,
     
     // City
-    #[schema(example = "New York")]
     pub city: Option<String>,
     
     // State/province
-    #[schema(example = "New York")]
     pub state: Option<String>,
     
     // Country
-    #[schema(example = "USA")]
     pub country: Option<String>,
     
     // Postal code
-    #[schema(example = "10001")]
     pub postal_code: Option<String>,
     
     // Payment terms in days (e.g., Net 30)
-    #[schema(example = 30)]
     pub payment_terms: i32,
     
     // Standard lead time in days
-    #[schema(example = 14)]
     pub lead_time_days: i32,
     
     // Supplier rating (0.0 to 5.0)
-    #[schema(value_type = f64, example = 4.5)]
     pub rating: Option<Decimal>,
     
     // Active supplier flag
     pub is_active: bool,
     
-    // Supplier tags
-    pub tags: sqlx::types::Json<Vec<String>>,
+    // Supplier tags (stored as TEXT[] in Postgres, JSONB in Sqlite)
+    pub tags: Vec<String>,
     
     // Internal notes
     pub notes: Option<String>,
@@ -98,7 +84,80 @@ pub struct Supplier {
     pub updated_by: Option<Uuid>,
 }
 
+// Implement FromRow manually for Postgres (TEXT[] -> serde_json::Value)
+impl<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow> for Supplier {
+    fn from_row(row: &'r sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        use sqlx::Row;
+        Ok(Supplier {
+            id: row.try_get("id")?,
+            company_id: row.try_get("company_id")?,
+            supplier_code: row.try_get("supplier_code")?,
+            name: row.try_get("name")?,
+            contact_person: row.try_get("contact_person")?,
+            email: row.try_get("email")?,
+            phone: row.try_get("phone")?,
+            website: row.try_get("website")?,
+            tax_id: row.try_get("tax_id")?,
+            address: row.try_get("address")?,
+            city: row.try_get("city")?,
+            state: row.try_get("state")?,
+            country: row.try_get("country")?,
+            postal_code: row.try_get("postal_code")?,
+            payment_terms: row.try_get("payment_terms")?,
+            lead_time_days: row.try_get("lead_time_days")?,
+            rating: row.try_get("rating")?,
+            is_active: row.try_get("is_active")?,
+            tags: {
+                let tags_vec: Vec<String> = row.try_get("tags").unwrap_or_default();
+                serde_json::json!(tags_vec)
+            },
+            notes: row.try_get("notes")?,
+            metadata: row.try_get("metadata")?,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+            created_by: row.try_get("created_by")?,
+            updated_by: row.try_get("updated_by")?,
+        })
+    }
+}
 
+// Implement FromRow for Sqlite
+impl<'r> sqlx::FromRow<'r, sqlx::sqlite::SqliteRow> for Supplier {
+    fn from_row(row: &'r sqlx::sqlite::SqliteRow) -> Result<Self, sqlx::Error> {
+        use sqlx::Row;
+        Ok(Supplier {
+            id: row.try_get("id")?,
+            company_id: row.try_get("company_id")?,
+            supplier_code: row.try_get("supplier_code")?,
+            name: row.try_get("name")?,
+            contact_person: row.try_get("contact_person")?,
+            email: row.try_get("email")?,
+            phone: row.try_get("phone")?,
+            website: row.try_get("website")?,
+            tax_id: row.try_get("tax_id")?,
+            address: row.try_get("address")?,
+            city: row.try_get("city")?,
+            state: row.try_get("state")?,
+            country: row.try_get("country")?,
+            postal_code: row.try_get("postal_code")?,
+            payment_terms: row.try_get("payment_terms")?,
+            lead_time_days: row.try_get("lead_time_days")?,
+            rating: {
+                // In Sqlite, rating is stored as f64 (Real), convert to Decimal
+                let r: Option<f64> = row.try_get("rating")?;
+                r.and_then(|v| Decimal::from_f64(v))
+            },
+            is_active: row.try_get("is_active")?,
+            tags: row.try_get("tags")?,
+            notes: row.try_get("notes")?,
+            metadata: row.try_get("metadata")?,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+            created_by: row.try_get("created_by")?,
+            updated_by: row.try_get("updated_by")?,
+        })
+    }
+}
 
 // ===== SQLITE INTERMEDIATE STRUCT (uses f64 for Decimal fields) =====
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -109,28 +168,25 @@ pub struct SupplierSqlite {
     // Foreign key - company/tenant
     pub company_id: Uuid,
     
-    // Unique supplier code (e.g., SUPP-001)
+    // Supplier code (unique within company)
     pub supplier_code: String,
     
     // Supplier name
     pub name: String,
     
-    // Primary contact person
+    // Contact person
     pub contact_person: Option<String>,
     
-    // Email address
+    // Email
     pub email: Option<String>,
     
-    // Phone number
+    // Phone
     pub phone: Option<String>,
     
-    // Website URL
+    // Website
     pub website: Option<String>,
     
-    // Tax ID / VAT number
-    pub tax_id: Option<String>,
-    
-    // Physical address
+    // Address
     pub address: Option<String>,
     
     // City
@@ -145,20 +201,26 @@ pub struct SupplierSqlite {
     // Postal code
     pub postal_code: Option<String>,
     
-    // Payment terms in days (e.g., Net 30)
-    pub payment_terms: i32,
+    // Tax ID / VAT number
+    pub tax_id: Option<String>,
     
-    // Standard lead time in days
-    pub lead_time_days: i32,
+    // Payment terms (days)
+    pub payment_terms: Option<i32>,
     
-    // Supplier rating (0.0 to 5.0) - stored as f64 in SQLite
+    // Credit limit
+    pub credit_limit: Option<f64>,
+    
+    // Lead time in days
+    pub lead_time_days: Option<i32>,
+    
+    // Rating (1-5)
     pub rating: Option<f64>,
     
     // Active supplier flag
     pub is_active: bool,
     
     // Supplier tags
-    pub tags: sqlx::types::Json<Vec<String>>,
+    pub tags: serde_json::Value,
     
     // Internal notes
     pub notes: Option<String>,
@@ -290,7 +352,7 @@ pub struct UpdateSupplierRequest {
     pub rating: Option<Decimal>,
     
     pub is_active: Option<bool>,
-    pub tags: Option<Vec<String>>,
+    pub tags: Option<serde_json::Value>,
     pub notes: Option<String>,
     pub metadata: Option<serde_json::Value>,
 }
@@ -325,10 +387,10 @@ impl From<SupplierSqlite> for Supplier {
             state: s.state,
             country: s.country,
             postal_code: s.postal_code,
-            payment_terms: s.payment_terms,
-            lead_time_days: s.lead_time_days,
+            payment_terms: s.payment_terms.unwrap_or(0),
+            lead_time_days: s.lead_time_days.unwrap_or(0),
             // Convert f64 back to Decimal
-            rating: s.rating.map(|r| Decimal::from_f64_retain(r).unwrap_or_default()),
+            rating: s.rating.and_then(|r| Decimal::from_f64(r)),
             is_active: s.is_active,
             tags: s.tags,
             notes: s.notes,
@@ -349,6 +411,14 @@ impl Supplier {
         request: CreateSupplierRequest,
         created_by: Uuid,
     ) -> Result<Supplier, sqlx::Error> {
+        // Convert tags from Option<serde_json::Value> to Vec<String> for TEXT[]
+        let tags_vec: Vec<String> = request.tags
+            .and_then(|v| v.as_array())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect();
+        
         let supplier = sqlx::query_as::<Postgres, Supplier>(
             r#"
             INSERT INTO suppliers (
@@ -381,7 +451,7 @@ impl Supplier {
         .bind(request.lead_time_days.unwrap_or(7))
         .bind(request.rating)
         .bind(true) // is_active = true
-        .bind(request.tags.unwrap_or_default())
+        .bind(tags_vec)
         .bind(request.notes)
         .bind(request.metadata.unwrap_or(serde_json::json!({})))
         .bind(created_by)
@@ -673,7 +743,14 @@ impl Supplier {
             builder.push(", is_active = ").push_bind(is_active);
         }
         if let Some(tags) = &request.tags {
-            builder.push(", tags = ").push_bind(tags);
+            // Convert serde_json::Value to Vec<String> for TEXT[]
+            let tags_vec: Vec<String> = tags
+                .as_array()
+                .unwrap_or(&[])
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect();
+            builder.push(", tags = ").push_bind(tags_vec);
         }
         if let Some(notes) = &request.notes {
             builder.push(", notes = ").push_bind(notes);
@@ -855,9 +932,9 @@ impl Supplier {
         Ok(Some(SupplierWithStats {
             supplier,
             total_purchase_orders: stats.0,
-            total_purchases: Decimal::from_f64_retain(stats.1.unwrap_or(0.0)).unwrap_or_default(),
+            total_purchases: Decimal::from_f64(stats.1.unwrap_or(0.0)).unwrap_or_default(),
             last_purchase_date: stats.2,
-            average_order_value: Decimal::from_f64_retain(stats.3.unwrap_or(0.0)).unwrap_or_default(),
+            average_order_value: Decimal::from_f64(stats.3.unwrap_or(0.0)).unwrap_or_default(),
         }))
     }
 

@@ -39,13 +39,7 @@ export function UserMenu() {
     }
   };
 
-  const initials =
-    user?.full_name
-      ?.split(" ")
-      .map((n: string) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2) || "U";
+  const initials = `${(user?.first_name?.[0] ?? "")}${(user?.last_name?.[0] ?? "")}`.toUpperCase() || "U";
 
   return (
     <Menu shadow="md" width={220} position="bottom-end">
@@ -57,7 +51,7 @@ export function UserMenu() {
             </Avatar>
             <div style={{ lineHeight: 1.2 }}>
               <Text size="sm" fw={600} lineClamp={1}>
-                {user?.full_name}
+                {user?.first_name} {user?.last_name}
               </Text>
               <Text size="xs" c="dimmed" lineClamp={1}>
                 {user?.role_name}

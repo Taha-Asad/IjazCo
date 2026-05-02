@@ -26,18 +26,26 @@ export function CategoryForm({
 
   const form = useForm({
     initialValues: {
-      name: initialValues?.name || "",
-      description: initialValues?.description || "",
-      parent_id: initialValues?.parent_id || null,
+      name: initialValues?.name ?? "",
+      code: initialValues?.code ?? "",
+      description: initialValues?.description ?? "",
+      parent_id: initialValues?.parent_id ?? null,
     },
     validate: {
-      name: (v) => (v.trim().length < 1 ? "Category name required" : null),
+      name: (v) => (!v || v.trim().length < 1 ? "Category name required" : null),
+      code: (v) => (!v || v.trim().length < 1 ? "Category code required" : null),
     },
   });
 
   return (
     <form onSubmit={form.onSubmit(onSubmit)}>
       <Stack>
+        <TextInput
+          label="Category Code"
+          placeholder="e.g. LAB-001"
+          required
+          {...form.getInputProps("code")}
+        />
         <TextInput
           label="Category Name"
           placeholder="e.g. Lab Equipment"

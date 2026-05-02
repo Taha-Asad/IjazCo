@@ -37,7 +37,12 @@ export function CustomersPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["customers", page, debouncedSearch],
     queryFn: () =>
-      customersApi.list({ page, per_page: PAGE_SIZE, search: debouncedSearch }),
+      customersApi.list({
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        company_id: user?.company_id,
+        ...(debouncedSearch?.trim() && { search: debouncedSearch }),
+      }),
   });
 
   const createMutation = useMutation({

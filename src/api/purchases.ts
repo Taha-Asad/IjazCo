@@ -39,35 +39,35 @@ export interface CreatePurchaseOrderRequest {
 
 export const purchasesApi = {
   list: (params?: PaginationParams & { status?: string }) =>
-    apiClient.get<PaginatedResponse<PurchaseOrder>>("/purchases/orders", {
+    apiClient.get<PaginatedResponse<PurchaseOrder>>("purchases/orders", {
       params,
     }),
 
   getById: (id: string) =>
-    apiClient.get<ApiResponse<PurchaseOrder>>(`/purchases/orders/${id}`),
+    apiClient.get<ApiResponse<PurchaseOrder>>(`purchases/orders/${id}`),
 
   create: (data: CreatePurchaseOrderRequest) =>
-    apiClient.post<ApiResponse<PurchaseOrder>>("/purchases/orders", data),
+    apiClient.post<ApiResponse<PurchaseOrder>>("purchases/orders", data),
 
   update: (id: string, data: Partial<CreatePurchaseOrderRequest>) =>
-    apiClient.put<ApiResponse<PurchaseOrder>>(`/purchases/orders/${id}`, data),
+    apiClient.put<ApiResponse<PurchaseOrder>>(`purchases/orders/${id}`, data),
 
   delete: (id: string) =>
-    apiClient.delete<ApiResponse<null>>(`/purchases/orders/${id}`),
+    apiClient.delete<ApiResponse<null>>(`purchases/orders/${id}`),
 
   submit: (id: string) =>
     apiClient.post<ApiResponse<PurchaseOrder>>(
-      `/purchases/orders/${id}/submit`,
+      `purchases/orders/${id}/submit`,
     ),
 
   receiveGoods: (id: string, data?: { notes?: string }) =>
     apiClient.post<ApiResponse<PurchaseOrder>>(
-      `/purchases/orders/${id}/receive`,
+      `purchases/orders/${id}/receive`,
       data,
     ),
 
   getItems: (id: string) =>
     apiClient.get<ApiResponse<PurchaseOrderItem[]>>(
-      `/purchases/orders/${id}/items`,
+      `purchases/orders/${id}/items`,
     ),
 };

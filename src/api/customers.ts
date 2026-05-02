@@ -24,17 +24,17 @@ export interface Customer {
 
 export const customersApi = {
   list: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<Customer>>("/customers", { params }),
+    apiClient.get<PaginatedResponse<Customer>>("customers", { params }),
 
   getById: (id: string) =>
-    apiClient.get<ApiResponse<Customer>>(`/customers/${id}`),
+    apiClient.get<ApiResponse<Customer>>(`customers/${id}`),
 
   create: (data: Omit<Customer, "id" | "created_at" | "current_balance">) =>
-    apiClient.post<ApiResponse<Customer>>("/customers", data),
+    apiClient.post<ApiResponse<Customer>>("customers", data),
 
   update: (id: string, data: Partial<Customer>) =>
-    apiClient.put<ApiResponse<Customer>>(`/customers/${id}`, data),
+    apiClient.put<ApiResponse<Customer>>(`customers/${id}`, data),
 
   delete: (id: string) =>
-    apiClient.delete<ApiResponse<null>>(`/customers/${id}`),
+    apiClient.delete<ApiResponse<null>>(`customers/${id}`),
 };

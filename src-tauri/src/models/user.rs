@@ -13,16 +13,45 @@ use regex::Regex;
 
 // ===== USER ROLE ENUM =====
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, sqlx::Type, PartialEq, Eq)]
-#[sqlx(type_name = "user_role", rename_all = "lowercase")]
+#[sqlx(type_name = "user_role")]
 pub enum UserRole {
+    #[sqlx(rename = "admin")]
     #[serde(rename = "admin")]
     Admin,
+    #[sqlx(rename = "inventory_manager")]
     #[serde(rename = "inventory_manager")]
     InventoryManager,
+    #[sqlx(rename = "sales_user")]
     #[serde(rename = "sales_user")]
     SalesUser,
+    #[sqlx(rename = "import_clerk")]
     #[serde(rename = "import_clerk")]
     ImportClerk,
+}
+
+impl std::str::FromStr for UserRole {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "admin" => Ok(UserRole::Admin),
+            "inventory_manager" => Ok(UserRole::InventoryManager),
+            "sales_user" => Ok(UserRole::SalesUser),
+            "import_clerk" => Ok(UserRole::ImportClerk),
+            _ => Err(format!("Invalid user role: {}", s)),
+        }
+    }
+}
+
+impl std::fmt::Display for UserRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserRole::Admin => write!(f, "admin"),
+            UserRole::InventoryManager => write!(f, "inventory_manager"),
+            UserRole::SalesUser => write!(f, "sales_user"),
+            UserRole::ImportClerk => write!(f, "import_clerk"),
+        }
+    }
 }
 
 // ===== USER STATUS ENUM =====
@@ -910,7 +939,7 @@ impl Role {
             .bind(request.company_id)
             .bind(request.name)
             .bind(request.description)
-            .bind(request.role_type)
+            .bind(request.role_type.to_string())  // Convert enum to string
             .bind(request.permissions)
             .bind(request.is_system.unwrap_or(false))
             .bind(true)
@@ -924,26 +953,33 @@ impl Role {
         request: CreateRoleRequest,
         created_by: Uuid
     ) -> Result<Role, sqlx::Error> {
+        // Convert role_type to string for PostgreSQL enum
+        let role_type_str = match request.role_type {
+            UserRole::Admin => "admin",
+            UserRole::InventoryManager => "inventory_manager",
+            UserRole::SalesUser => "sales_user",
+            UserRole::ImportClerk => "import_clerk",
+        };
+        
+        // Use simple insert with enum cast in SQL
         let role = sqlx::query_as::<Postgres, Role>(
-                r#"
-            INSERT INTO roles (
-                company_id, name, description, role_type,
-                permissions, is_system, is_active, created_by, updated_by
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            r#"
+            INSERT INTO roles (company_id, name, description, role_type, permissions, is_system, is_active, created_by, updated_by) 
+            VALUES ($1, $2, $3, $4::user_role, $5, $6, $7, $8, $9) 
             RETURNING *
             "#
-            )
-            .bind(request.company_id)
-            .bind(request.name)
-            .bind(request.description)
-            .bind(request.role_type)
-            .bind(request.permissions)
-            .bind(request.is_system.unwrap_or(false))
-            .bind(true)
-            .bind(created_by)
-            .bind(created_by)
-            .fetch_one(pool).await?;
+        )
+        .bind(request.company_id)
+        .bind(&request.name)
+        .bind(&request.description)
+        .bind(role_type_str)  // Bind as string, cast in SQL
+        .bind(&request.permissions)
+        .bind(request.is_system.unwrap_or(false))
+        .bind(true)
+        .bind(created_by)
+        .bind(created_by)
+        .fetch_one(pool).await?;
+        
         Ok(role)
     }
 

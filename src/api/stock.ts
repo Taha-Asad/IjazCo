@@ -47,16 +47,16 @@ export interface TransferStockRequest {
 
 export const stockApi = {
   list: (params?: PaginationParams & { branch_id?: string }) =>
-    apiClient.get<PaginatedResponse<StockRecord>>("/stock", { params }),
+    apiClient.get<PaginatedResponse<StockRecord>>("stock", { params }),
 
   adjust: (data: AdjustStockRequest) =>
-    apiClient.post<ApiResponse<StockRecord>>("/stock/adjust", data),
+    apiClient.post<ApiResponse<StockRecord>>("stock/adjust", data),
 
   transfer: (data: TransferStockRequest) =>
-    apiClient.post<ApiResponse<null>>("/stock/transfer", data),
+    apiClient.post<ApiResponse<null>>("stock/transfer", data),
 
   listMovements: (params?: PaginationParams & { item_id?: string }) =>
-    apiClient.get<PaginatedResponse<StockMovement>>("/stock/movements", {
+    apiClient.get<PaginatedResponse<StockMovement>>("stock/movements", {
       params,
     }),
 
@@ -64,8 +64,8 @@ export const stockApi = {
     item_id: string;
     branch_id: string;
     counted_quantity: number;
-  }) => apiClient.post<ApiResponse<null>>("/stock/physical-count", data),
+  }) => apiClient.post<ApiResponse<null>>("stock/physical-count", data),
 
   getLowStockAlerts: () =>
-    apiClient.get<ApiResponse<StockRecord[]>>("/stock/low-stock-alerts"),
+    apiClient.get<ApiResponse<StockRecord[]>>("stock/low-stock-alerts"),
 };

@@ -89,10 +89,10 @@ export function SettingsPage() {
           <Card withBorder radius="md" p="lg">
             <Group mb="lg">
               <Avatar size={64} radius="xl" color="blue">
-                {user?.full_name?.charAt(0)}
+                {user?.first_name?.charAt(0)}
               </Avatar>
               <div>
-                <Title order={4}>{user?.full_name}</Title>
+                <Title order={4}>{user?.first_name} {user?.last_name}</Title>
                 <Text c="dimmed" size="sm">
                   {user?.email}
                 </Text>
@@ -105,7 +105,7 @@ export function SettingsPage() {
             <Stack gap="sm">
               <TextInput
                 label="Full Name"
-                value={user?.full_name || ""}
+                value={`${user?.first_name || ""} ${user?.last_name || ""}`.trim()}
                 readOnly
               />
               <TextInput

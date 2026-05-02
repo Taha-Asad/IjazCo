@@ -311,9 +311,6 @@ pub fn categories_router() -> axum::Router<Arc<AppState>> {
     use axum::routing::{delete, get, post, put};
 
     axum::Router::new()
-        .route("/", get(list_categories))
-        .route("/create-category", post(create_category))
-        .route("/:id", get(get_category))
-        .route("/:id/update-category" ,put(update_category))
-        .route("/:id/delete-category" , delete(delete_category))
+        .route("/", get(list_categories).post(create_category))
+        .route("/:id", get(get_category).put(update_category).delete(delete_category))
 }

@@ -15,13 +15,13 @@ export interface InventoryReportParams {
 
 export const reportsApi = {
   salesReport: (params: SalesReportParams) =>
-    apiClient.get<ApiResponse<any>>("/reports/sales", { params }),
+    apiClient.get<ApiResponse<any>>("reports/sales", { params }),
 
   inventoryReport: (params?: InventoryReportParams) =>
-    apiClient.get<ApiResponse<any>>("/reports/inventory", { params }),
+    apiClient.get<ApiResponse<any>>("reports/inventory", { params }),
 
   exportPdf: (data: {
     report_type: "sales" | "inventory";
     params: Record<string, any>;
-  }) => apiClient.post("/reports/export/pdf", data, { responseType: "blob" }),
+  }) => apiClient.post("reports/export/pdf", data, { responseType: "blob" }),
 };

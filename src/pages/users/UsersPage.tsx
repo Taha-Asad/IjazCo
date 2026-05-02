@@ -42,7 +42,11 @@ export function UsersPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["users", page, debouncedSearch],
     queryFn: () =>
-      usersApi.list({ page, per_page: PAGE_SIZE, search: debouncedSearch }),
+      usersApi.list({
+        page: Number(page),
+        per_page: Number(PAGE_SIZE),
+        ...(debouncedSearch && { search: debouncedSearch }),
+      }),
   });
 
   const deleteMutation = useMutation({
@@ -101,16 +105,16 @@ export function UsersPage() {
         minHeight={400}
         columns={[
           {
-            accessor: "full_name",
+            accessor: "first_name",
             title: "User",
             render: (user) => (
               <Group gap="sm">
                 <Avatar size="sm" radius="xl" color="blue">
-                  {user.full_name.charAt(0)}
+                  {user.first_name.charAt(0)}
                 </Avatar>
                 <div>
                   <div style={{ fontWeight: 500, fontSize: 14 }}>
-                    {user.full_name}
+                    {user.first_name} {user.last_name}
                   </div>
                   <div style={{ color: "gray", fontSize: 12 }}>
                     {user.email}
@@ -184,7 +188,7 @@ export function UsersPage() {
                     onClick={() =>
                       openConfirmModal({
                         title: "Delete User",
-                        message: `Delete user "${user.full_name}"?`,
+                        message: `Delete user "${user.first_name} ${user.last_name}"?`,
                         confirmLabel: "Delete",
                         danger: true,
                         onConfirm: () => deleteMutation.mutate(user.id),

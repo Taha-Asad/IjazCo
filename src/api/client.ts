@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
-import { useAuthStore } from "../store/authStore";
+import { useAuthStore } from "../store"; // Adjust path to your store
 
-const BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 class ApiClient {
   private instance: AxiosInstance;
@@ -13,13 +13,27 @@ class ApiClient {
       headers: {
         "Content-Type": "application/json",
       },
+      // THIS FIXES THE "i64" ERROR:
+        // It ensures params are serialized correctly and empty values are removed
+        paramsSerializer: {
+          serialize: (params) => {
+            const parts: string[] = [];
+            Object.entries(params).forEach(([key, value]) => {
+              if (value === null || value === undefined || value === "") return;
+              // Don't convert numbers to strings
+              parts.push(
+                `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+              );
+            });
+            return parts.join("&");
+          },
+        },
     });
 
     this.setupInterceptors();
   }
 
   private setupInterceptors() {
-    // Request interceptor - attach token
     this.instance.interceptors.request.use(
       (config) => {
         const token = useAuthStore.getState().accessToken;
@@ -31,7 +45,6 @@ class ApiClient {
       (error) => Promise.reject(error),
     );
 
-    // Response interceptor - handle token refresh
     this.instance.interceptors.response.use(
       (response) => response,
       async (error) => {
@@ -44,7 +57,7 @@ class ApiClient {
             const refreshToken = useAuthStore.getState().refreshToken;
             if (!refreshToken) throw new Error("No refresh token");
 
-            const response = await this.instance.post("/auth/refresh", {
+            const response = await axios.post(`${BASE_URL}/auth/refresh`, {
               refresh_token: refreshToken,
             });
 
@@ -53,12 +66,12 @@ class ApiClient {
 
             originalRequest.headers.Authorization = `Bearer ${access_token}`;
             return this.instance(originalRequest);
-          } catch {
+          } catch (refreshError) {
             useAuthStore.getState().logout();
             window.location.href = "/login";
+            return Promise.reject(refreshError);
           }
         }
-
         return Promise.reject(error);
       },
     );

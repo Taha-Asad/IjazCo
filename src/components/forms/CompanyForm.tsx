@@ -1,25 +1,19 @@
-import {
-  TextInput,
-  Button,
-  Stack,
-  Title,
-  Text,
-  Group,
-  Select,
-} from "@mantine/core";
+import { TextInput, Button, Stack, Textarea } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { useNavigate, Link } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
-import { notifications } from "@mantine/notifications";
-import { companiesApi } from "../../api/companies";
+import { z } from "zod";
+import { zodResolver } from "mantine-form-zod-resolver";
+
+const schema = z.object({
+  name: z.string().min(2, "Company name required"),
+  email: z.string().email("Valid email").optional().or(z.literal("")),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  country: z.string().optional(),
+});
 
 interface CompanyFormProps {
-  initialValues?: {
-    name?: string;
-    email?: string;
-    city?: string;
-    country?: string;
-  };
+  initialValues?: any;
   onSubmit: (values: any) => Promise<void>;
   loading?: boolean;
 }
@@ -30,17 +24,14 @@ export function CompanyForm({
   loading,
 }: CompanyFormProps) {
   const form = useForm({
-    initialValues: {
-      name: initialValues?.name || "",
-      email: initialValues?.email || "",
-      city: initialValues?.city || "",
-      country: initialValues?.country || "",
-      is_active: true,
-    },
-    validate: {
-      name: (v) => (!v ? "Company name required" : null),
-      email: (v) =>
-        v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "Invalid email" : null,
+    validate: zodResolver(schema),
+    initialValues: initialValues || {
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      city: "",
+      country: "",
     },
   });
 
@@ -49,21 +40,38 @@ export function CompanyForm({
       <Stack>
         <TextInput
           label="Company Name"
-          placeholder="Enter company name"
+          placeholder="Acme Corp"
           required
           {...form.getInputProps("name")}
         />
         <TextInput
           label="Email"
-          placeholder="company@example.com"
+          placeholder="info@company.com"
           {...form.getInputProps("email")}
         />
-        <Group grow>
-          <TextInput label="City" {...form.getInputProps("city")} />
-          <TextInput label="Country" {...form.getInputProps("country")} />
-        </Group>
+        <TextInput
+          label="Phone"
+          placeholder="+1 555 0000"
+          {...form.getInputProps("phone")}
+        />
+        <TextInput
+          label="City"
+          placeholder="New York"
+          {...form.getInputProps("city")}
+        />
+        <TextInput
+          label="Country"
+          placeholder="USA"
+          {...form.getInputProps("country")}
+        />
+        <Textarea
+          label="Address"
+          placeholder="Street address"
+          rows={3}
+          {...form.getInputProps("address")}
+        />
         <Button type="submit" loading={loading}>
-          {initialValues ? "Update Company" : "Create Company"}
+          {initialValues ? "Save Changes" : "Create Company"}
         </Button>
       </Stack>
     </form>

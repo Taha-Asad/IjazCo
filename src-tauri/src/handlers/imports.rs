@@ -130,8 +130,8 @@ pub async fn list_imports(
     
     Ok(paginated(
         imports,
-        params.pagination.page,
-        params.pagination.per_page,
+        params.pagination.page(),
+        params.pagination.per_page(),
         total_count,
     ))
 }

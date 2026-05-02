@@ -1,5 +1,5 @@
+import { ApiResponse, PaginatedResponse, PaginationParams } from "../types";
 import apiClient from "./client";
-import type { ApiResponse, PaginatedResponse, PaginationParams } from "@/types";
 
 export interface Company {
   id: string;
@@ -26,18 +26,29 @@ export interface CreateCompanyRequest {
 }
 
 export const companiesApi = {
-  list: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<Company>>("/companies", { params }),
+  list: (params?: PaginationParams) => {
+    // We create a clean object to ensure we don't send "" or undefined
+    // which can also cause 400 errors.
+    const searchParams: any = {};
+
+    if (params?.page) searchParams.page = Number(params.page);
+    if (params?.per_page) searchParams.per_page = Number(params.per_page);
+    if (params?.search?.trim()) searchParams.search = params.search.trim();
+
+    return apiClient.get<PaginatedResponse<Company>>("companies", {
+      params: searchParams,
+    });
+  },
 
   getById: (id: string) =>
-    apiClient.get<ApiResponse<Company>>(`/companies/${id}`),
+    apiClient.get<ApiResponse<Company>>(`companies/${id}`),
 
   create: (data: CreateCompanyRequest) =>
-    apiClient.post<ApiResponse<Company>>("/companies", data),
+    apiClient.post<ApiResponse<Company>>("companies", data),
 
   update: (id: string, data: Partial<CreateCompanyRequest>) =>
-    apiClient.put<ApiResponse<Company>>(`/companies/${id}`, data),
+    apiClient.put<ApiResponse<Company>>(`companies/${id}`, data),
 
   delete: (id: string) =>
-    apiClient.delete<ApiResponse<null>>(`/companies/${id}`),
+    apiClient.delete<ApiResponse<null>>(`companies/${id}`),
 };

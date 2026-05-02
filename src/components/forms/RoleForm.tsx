@@ -9,6 +9,7 @@ import {
   Paper,
   Text,
   Group,
+  Select,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
@@ -20,6 +21,13 @@ interface RoleFormProps {
   loading?: boolean;
 }
 
+const ROLE_TYPE_OPTIONS = [
+  { value: "admin", label: "Admin" },
+  { value: "inventory_manager", label: "Inventory Manager" },
+  { value: "sales_user", label: "Sales User" },
+  { value: "import_clerk", label: "Import Clerk" },
+];
+
 export function RoleForm({ initialValues, onSubmit, loading }: RoleFormProps) {
   const [permissions, setPermissions] = useState<Record<string, string[]>>(
     initialValues?.permissions || {},
@@ -29,9 +37,11 @@ export function RoleForm({ initialValues, onSubmit, loading }: RoleFormProps) {
     initialValues: {
       name: initialValues?.name || "",
       description: initialValues?.description || "",
+      role_type: initialValues?.role_type || "",
     },
     validate: {
       name: (v) => (v.trim().length < 2 ? "Name required" : null),
+      role_type: (v) => (!v ? "Role type required" : null),
     },
   });
 
@@ -66,6 +76,13 @@ export function RoleForm({ initialValues, onSubmit, loading }: RoleFormProps) {
           placeholder="e.g. Sales Manager"
           required
           {...form.getInputProps("name")}
+        />
+        <Select
+          label="Role Type"
+          placeholder="Select role type"
+          data={ROLE_TYPE_OPTIONS}
+          required
+          {...form.getInputProps("role_type")}
         />
         <Textarea
           label="Description"
