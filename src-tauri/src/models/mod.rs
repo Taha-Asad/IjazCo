@@ -14,6 +14,7 @@ pub mod sales;
 pub mod purchase;       
 pub mod import;         
 pub mod audit;          
+pub mod lead;            
 
 // ===== RE-EXPORT COMMONLY USED TYPES =====
 
@@ -65,3 +66,9 @@ pub use import::{
 
 // Audit
 pub use audit::{AuditLog, AuditAction, CreateAuditLogRequest};
+
+// Leads
+pub use lead::{
+    Lead, LeadWithDetails, LeadStatus, LeadSource,
+    CreateLeadRequest, UpdateLeadRequest,
+};

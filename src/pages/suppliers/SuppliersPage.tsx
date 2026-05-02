@@ -32,7 +32,6 @@ export function SuppliersPage() {
       suppliersApi.list({
         page: Number(page),
         per_page: Number(PAGE_SIZE),
-        company_id: user?.company_id,
         ...(debouncedSearch?.trim() && { search: debouncedSearch }),
       }),
   });

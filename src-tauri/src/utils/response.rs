@@ -2,51 +2,39 @@
 // Standardized API response structures
 // Provides consistent JSON response format across all endpoints
 
+use crate::utils::error::AppError;
+
 use serde::{Deserialize, Serialize};
 use axum::{
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     Json,
 };
 
 // ===== SUCCESS RESPONSE STRUCTURE =====
 // Standard format for successful API responses
+// This matches the frontend ApiResponse<T> interface
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SuccessResponse<T> {
-    // HTTP status code
-    pub status: u16,
+    // Success flag
+    pub success: bool,
     
     // Success message
     pub message: String,
     
     // Response data (generic type)
     pub data: T,
-    
-    // Timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
 // ===== PAGINATED RESPONSE STRUCTURE =====
 // Response format for paginated data
+// This matches the frontend PaginatedResponse<T> interface
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PaginatedResponse<T> {
-    // HTTP status code
-    pub status: u16,
-    
     // Current page data
     pub data: Vec<T>,
     
-    // Pagination metadata
-    pub pagination: PaginationMeta,
-    
-    // Timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-}
-
-// ===== PAGINATION METADATA =====
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PaginationMeta {
-    // Current page number (1-based)
+    // Pagination metadata (flattened to match frontend)
     pub current_page: i64,
     
     // Number of items per page
@@ -57,51 +45,30 @@ pub struct PaginationMeta {
     
     // Total number of pages
     pub total_pages: i64,
-    
-    // Has next page
-    pub has_next: bool,
-    
-    // Has previous page
-    pub has_previous: bool,
 }
 
-// ===== API RESPONSE ENUM =====
-// Wrapper for all response types
-#[derive(Debug)]
-pub enum ApiResponse<T> {
-    Success(SuccessResponse<T>),
-    Paginated(PaginatedResponse<T>),
-}
 
-// ===== IMPLEMENT INTORESPONSE FOR APIRESPONSE =====
-impl<T> IntoResponse for ApiResponse<T>
-where
-    T: Serialize,
-{
-    fn into_response(self) -> Response {
-        match self {
-            ApiResponse::Success(response) => {
-                (StatusCode::OK, Json(response)).into_response()
-            },
-            ApiResponse::Paginated(response) => {
-                (StatusCode::OK, Json(response)).into_response()
-            },
-        }
-    }
-}
+
+// ===== API RESPONSE TYPE ALIAS =====
+// Type alias for consistent response handling
+pub type ApiResponse<T> = Result<Json<SuccessResponse<T>>, AppError>;
+
+// ===== PAGINATED RESPONSE TYPE =====
+// Direct return type for paginated endpoints
+// This matches the frontend PaginatedResponse<T> interface
+pub type PaginatedApiResponse<T> = Result<Json<PaginatedResponse<T>>, AppError>;
 
 // ===== HELPER FUNCTIONS =====
 
 // Create success response with data
-pub fn success<T>(message: &str, data: T) -> ApiResponse<T>
+pub fn success<T>(message: &str, data: T) -> Json<SuccessResponse<T>>
 where
     T: Serialize,
 {
-    ApiResponse::Success(SuccessResponse {
-        status: 200,
+    Json(SuccessResponse {
+        success: true,
         message: message.to_string(),
         data,
-        timestamp: chrono::Utc::now(),
     })
 }
 
@@ -110,14 +77,11 @@ pub fn success_with_status<T>(status: StatusCode, message: &str, data: T) -> imp
 where
     T: Serialize,
 {
-    let response = SuccessResponse {
-        status: status.as_u16(),
+    (status, Json(SuccessResponse {
+        success: true,
         message: message.to_string(),
         data,
-        timestamp: chrono::Utc::now(),
-    };
-    
-    (status, Json(response))
+    }))
 }
 
 // Create paginated response
@@ -126,24 +90,18 @@ pub fn paginated<T>(
     current_page: i64,
     per_page: i64,
     total_items: i64,
-) -> ApiResponse<T>
+) -> Json<PaginatedResponse<T>>
 where
     T: Serialize,
 {
     let total_pages = (total_items as f64 / per_page as f64).ceil() as i64;
     
-    ApiResponse::Paginated(PaginatedResponse {
-        status: 200,
+    Json(PaginatedResponse {
         data,
-        pagination: PaginationMeta {
-            current_page,
-            per_page,
-            total_items,
-            total_pages,
-            has_next: current_page < total_pages,
-            has_previous: current_page > 1,
-        },
-        timestamp: chrono::Utc::now(),
+        current_page,
+        per_page,
+        total_items,
+        total_pages,
     })
 }
 
@@ -179,15 +137,10 @@ mod tests {
         };
         
         let response = success("Success", data);
-        
-        match response {
-            ApiResponse::Success(resp) => {
-                assert_eq!(resp.status, 200);
-                assert_eq!(resp.message, "Success");
-                assert_eq!(resp.data.id, 1);
-            },
-            _ => panic!("Expected Success response"),
-        }
+        let inner = response.0;
+        assert_eq!(inner.success, true);
+        assert_eq!(inner.message, "Success");
+        assert_eq!(inner.data.id, 1);
     }
     
     #[test]
@@ -198,17 +151,10 @@ mod tests {
         ];
         
         let response = paginated(data, 1, 10, 100);
-        
-        match response {
-            ApiResponse::Paginated(resp) => {
-                assert_eq!(resp.pagination.current_page, 1);
-                assert_eq!(resp.pagination.per_page, 10);
-                assert_eq!(resp.pagination.total_items, 100);
-                assert_eq!(resp.pagination.total_pages, 10);
-                assert!(resp.pagination.has_next);
-                assert!(!resp.pagination.has_previous);
-            },
-            _ => panic!("Expected Paginated response"),
-        }
+        let inner = response.0;
+        assert_eq!(inner.current_page, 1);
+        assert_eq!(inner.per_page, 10);
+        assert_eq!(inner.total_items, 100);
+        assert_eq!(inner.total_pages, 10);
     }
 }

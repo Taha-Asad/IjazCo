@@ -47,6 +47,7 @@ export interface AuthUser {
   company_id: string;
   role_id: string;
   role_name?: string;
+  permissions?: Record<string, string[]>;
 }
 
 export interface ChangePasswordRequest {

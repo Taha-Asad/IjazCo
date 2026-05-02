@@ -23,10 +23,12 @@ import { formatCurrency, formatDate } from "@/utils/formatters";
 import dayjs from "dayjs";
 
 export function ReportsPage() {
-  const [startDate, setStartDate] = useState<Date | null>(
-    dayjs().startOf("month").toDate(),
+  const [startDate, setStartDate] = useState<string | null>(
+    dayjs().startOf("month").format("YYYY-MM-DD"),
   );
-  const [endDate, setEndDate] = useState<Date | null>(new Date());
+  const [endDate, setEndDate] = useState<string | null>(
+    dayjs().format("YYYY-MM-DD"),
+  );
   const [exportLoading, setExportLoading] = useState(false);
 
   const {
@@ -37,8 +39,8 @@ export function ReportsPage() {
     queryKey: ["sales-report", startDate, endDate],
     queryFn: () =>
       reportsApi.salesReport({
-        start_date: dayjs(startDate).format("YYYY-MM-DD"),
-        end_date: dayjs(endDate).format("YYYY-MM-DD"),
+        start_date: startDate!,
+        end_date: endDate!,
       }),
     enabled: !!startDate && !!endDate,
   });
@@ -54,8 +56,8 @@ export function ReportsPage() {
       const blob = (await reportsApi.exportPdf({
         report_type: type,
         params: {
-          start_date: dayjs(startDate).format("YYYY-MM-DD"),
-          end_date: dayjs(endDate).format("YYYY-MM-DD"),
+          start_date: startDate!,
+          end_date: endDate!,
         },
       })) as Blob;
 

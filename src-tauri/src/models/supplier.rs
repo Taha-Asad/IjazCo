@@ -4,7 +4,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Postgres, Sqlite};
+use sqlx::{Postgres, Sqlite};
 use uuid::Uuid;
 use validator::Validate;
 use utoipa::ToSchema;
@@ -107,10 +107,7 @@ impl<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow> for Supplier {
             lead_time_days: row.try_get("lead_time_days")?,
             rating: row.try_get("rating")?,
             is_active: row.try_get("is_active")?,
-            tags: {
-                let tags_vec: Vec<String> = row.try_get("tags").unwrap_or_default();
-                serde_json::json!(tags_vec)
-            },
+            tags: row.try_get("tags").unwrap_or_default(),
             notes: row.try_get("notes")?,
             metadata: row.try_get("metadata")?,
             created_at: row.try_get("created_at")?,
@@ -148,7 +145,16 @@ impl<'r> sqlx::FromRow<'r, sqlx::sqlite::SqliteRow> for Supplier {
                 r.and_then(|v| Decimal::from_f64(v))
             },
             is_active: row.try_get("is_active")?,
-            tags: row.try_get("tags")?,
+            tags: {
+                let v: Option<serde_json::Value> = row.try_get("tags")?;
+                v.and_then(|val| {
+                    if let Some(arr) = val.as_array() {
+                        Some(arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                    } else {
+                        Some(vec![])
+                    }
+                }).unwrap_or_default()
+            },
             notes: row.try_get("notes")?,
             metadata: row.try_get("metadata")?,
             created_at: row.try_get("created_at")?,
@@ -392,7 +398,13 @@ impl From<SupplierSqlite> for Supplier {
             // Convert f64 back to Decimal
             rating: s.rating.and_then(|r| Decimal::from_f64(r)),
             is_active: s.is_active,
-            tags: s.tags,
+            tags: {
+                if let serde_json::Value::Array(arr) = &s.tags {
+                    arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                } else {
+                    vec![]
+                }
+            },
             notes: s.notes,
             metadata: s.metadata,
             created_at: s.created_at,
@@ -411,13 +423,8 @@ impl Supplier {
         request: CreateSupplierRequest,
         created_by: Uuid,
     ) -> Result<Supplier, sqlx::Error> {
-        // Convert tags from Option<serde_json::Value> to Vec<String> for TEXT[]
-        let tags_vec: Vec<String> = request.tags
-            .and_then(|v| v.as_array())
-            .unwrap_or_default()
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect();
+        // Convert tags from Option<Vec<String>> to Vec<String> for TEXT[]
+        let tags_vec: Vec<String> = request.tags.unwrap_or_default();
         
         let supplier = sqlx::query_as::<Postgres, Supplier>(
             r#"
@@ -744,12 +751,11 @@ impl Supplier {
         }
         if let Some(tags) = &request.tags {
             // Convert serde_json::Value to Vec<String> for TEXT[]
-            let tags_vec: Vec<String> = tags
-                .as_array()
-                .unwrap_or(&[])
-                .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect();
+            let tags_vec: Vec<String> = if let serde_json::Value::Array(arr) = tags {
+                arr.iter().filter_map(|v: &serde_json::Value| v.as_str().map(|s| s.to_string())).collect()
+            } else {
+                vec![]
+            };
             builder.push(", tags = ").push_bind(tags_vec);
         }
         if let Some(notes) = &request.notes {

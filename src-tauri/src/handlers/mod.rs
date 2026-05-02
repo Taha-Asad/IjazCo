@@ -14,3 +14,4 @@ pub mod roles;
 pub mod stock;
 pub mod suppliers;
 pub mod companies;
+pub mod leads;

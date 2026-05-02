@@ -3,7 +3,7 @@
 // CRUD operations for roles and permissions
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     routing::get,
     Json,
 };
@@ -13,13 +13,52 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
+use axum::response::IntoResponse;
 use crate::{
     AppState,
     config::DbPool,
     middleware::auth::{ AuthUser, verify_company_access },
     models::user::{ CreateRoleRequest, Role, UpdateRoleRequest },
-    utils::{ error::{ AppError, Result }, response::{ created, no_content } },
+    utils::{ error::{ AppError, Result }, response::{ created, no_content, paginated } },
 };
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct PaginationParams {
+    // Page number (1-based)
+    #[serde(default = "default_page")]
+    pub page: Option<String>,
+    
+    // Items per page
+    #[serde(default = "default_per_page")]
+    pub per_page: Option<String>,
+}
+fn default_page() -> Option<String> { Some("1".to_string()) }
+fn default_per_page() -> Option<String> { Some("20".to_string()) }
+
+impl PaginationParams {
+    // Get page as i64
+    pub fn page(&self) -> i64 {
+        self.page.as_ref()
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or(1)
+    }
+    
+    // Get per_page as i64
+    pub fn per_page(&self) -> i64 {
+        self.per_page.as_ref()
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or(20)
+    }
+    
+    // Calculate SQL OFFSET
+    pub fn offset(&self) -> i64 {
+        (self.page() - 1) * self.per_page()
+    }
+    
+    // Get SQL LIMIT
+    pub fn limit(&self) -> i64 {
+        self.per_page()
+    }
+}
 
 
 // ===== LIST ROLES ENDPOINT =====
@@ -31,43 +70,63 @@ use crate::{
     security(
         ("bearer_auth" = [])
     ),
+    params(
+        ("page" = Option<i64>, Query, description = "Page number (default: 1)"),
+        ("per_page" = Option<i64>, Query, description = "Items per page (default: 20)"),
+        ("search" = Option<String>, Query, description = "Search term"),
+        ("status" = Option<String>, Query, description = "Filter by status"),
+        ("role_id" = Option<Uuid>, Query, description = "Filter by role ID"),
+    ),
     responses(
         (status = 200, description = "List of roles", body = Vec<Role>),
         (status = 401, description = "Unauthorized")
     )
 )]
+
+
 pub async fn list_roles(
     State(state): State<Arc<AppState>>,
-    auth_user: AuthUser
-) -> Result<Json<Vec<Role>>> {
+    auth_user: AuthUser,
+    Query(params): Query<PaginationParams>, // Extract query parameters
+) -> Result<impl IntoResponse> {
     tracing::info!(
         user_id = %auth_user.id,
         company_id = %auth_user.company_id,
         "Listing roles"
     );
-    
-    // Get database pool    
 
     // Fetch roles for company
-    // let roles = Role::list_by_company(pool, auth_user.company_id).await?;
     let roles = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
-            // SaaS / Production Cloud Branch
             Role::list_by_company_pg(&pool, auth_user.company_id).await?
         }
         DbPool::Sqlite(pool) => {
-            // Desktop / Offline-First Branch [cite: 7, 37]
             Role::list_by_company_sqlite(&pool, auth_user.company_id).await?
         }
     };
+
     tracing::debug!(
         count = roles.len(),
         "Roles retrieved successfully"
     );
-    
-    Ok(Json(roles))
-}
 
+    // Get pagination values using the helper methods
+    let current_page = params.page();
+    let per_page = params.per_page();
+    let total = roles.len() as i64;
+
+    // Apply in-memory pagination (ideally this should be done at the database level)
+    let offset = params.offset() as usize;
+    let per_page_usize = per_page as usize;
+    let paginated_roles: Vec<Role> = roles
+        .into_iter()
+        .skip(offset)
+        .take(per_page_usize)
+        .collect();
+
+    // Return as paginated response
+    Ok(paginated(paginated_roles, current_page, per_page, total))
+}
 // ===== GET ROLE ENDPOINT =====
 // Get a single role by ID
 #[utoipa::path(

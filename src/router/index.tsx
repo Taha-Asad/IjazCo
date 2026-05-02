@@ -24,6 +24,8 @@ import { SuppliersPage } from "../pages/suppliers/SuppliersPage";
 import { SupplierDetailPage } from "../pages/suppliers/SupplierDetailPage";
 import { InventoryPage } from "../pages/inventory/InventoryPage";
 import { InventoryDetailPage } from "../pages/inventory/InventoryDetailPage";
+import { CreateInventoryPage } from "../pages/inventory/CreateInventoryPage";
+import { EditInventoryPage } from "../pages/inventory/EditInventoryPage";
 import { LowStockPage } from "../pages/inventory/LowStockPage";
 import { StockPage } from "../pages/stock/StockPage";
 import { StockMovementsPage } from "../pages/stock/StockMovementsPage";
@@ -38,6 +40,8 @@ import { PurchasesPage } from "../pages/purchases/PurchasesPage";
 // import { ImportDetailPage } from "../pages/imports/ImportDetailPage";
 import { ReportsPage } from "../pages/reports/ReportsPage";
 import { SettingsPage } from "../pages/settings/SettingsPage";
+import { LeadsPage } from "../pages/leads/LeadsPage";
+import { LeadDetailPage, EditLeadPage } from "../pages/leads/LeadDetailPage";
 
 export function AppRouter() {
   return (
@@ -81,7 +85,9 @@ export function AppRouter() {
           {/* Inventory */}
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/inventory/low-stock" element={<LowStockPage />} />
+          <Route path="/inventory/create" element={<CreateInventoryPage />} />
           <Route path="/inventory/:id" element={<InventoryDetailPage />} />
+          <Route path="/inventory/:id/edit" element={<EditInventoryPage />} />
 
           {/* Stock */}
           <Route path="/stock" element={<StockPage />} />
@@ -104,6 +110,11 @@ export function AppRouter() {
 
           {/* Reports */}
           <Route path="/reports" element={<ReportsPage />} />
+
+          {/* Leads */}
+          <Route path="/leads" element={<LeadsPage />} />
+          <Route path="/leads/:id" element={<LeadDetailPage />} />
+          <Route path="/leads/:id/edit" element={<EditLeadPage />} />
 
           {/* Settings */}
           <Route path="/settings" element={<SettingsPage />} />

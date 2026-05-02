@@ -16,54 +16,59 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { notifications } from "@mantine/notifications";
 import { authApi } from "../../api/auth";
-import { useAuthStore } from "../../store/authStore";
 
 const schema = z
   .object({
-    full_name: z.string().min(2, "Full name required"),
+    first_name: z.string().min(2, "First name required"),
+    last_name: z.string().min(2, "Last name required"),
     username: z.string().min(3, "Username min 3 characters"),
     email: z.string().email("Valid email required"),
     password: z.string().min(8, "Password min 8 characters"),
-    confirm_password: z.string(),
+    password_confirmation: z.string().min(1, "Please confirm your password"),
+    company_name: z.string().optional(),
   })
-  .refine((d) => d.password === d.confirm_password, {
+  .refine((d) => d.password === d.password_confirmation, {
     message: "Passwords do not match",
-    path: ["confirm_password"],
+    path: ["password_confirmation"],
   });
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { setUser, setTokens } = useAuthStore();
   const [loading, setLoading] = useState(false);
 
   const form = useForm({
     validate: zodResolver(schema),
     initialValues: {
-      full_name: "",
+      first_name: "",
+      last_name: "",
       username: "",
       email: "",
       password: "",
-      confirm_password: "",
+      password_confirmation: "", // ✅ Defined here
+      company_name: "",
     },
   });
 
   const handleSubmit = async (values: typeof form.values) => {
     setLoading(true);
     try {
-      const res = await authApi.register({
-        full_name: values.full_name,
+      await authApi.register({
         username: values.username,
         email: values.email,
         password: values.password,
+        password_confirmation: values.password_confirmation,
+        first_name: values.first_name,
+        last_name: values.last_name,
+        company_name: values.company_name || undefined,
+        role_id: "", // Will be set by backend for new registrations
       });
-      setUser(res.data.user);
-      setTokens(res.data.tokens.access_token, res.data.tokens.refresh_token);
+
       notifications.show({
-        title: "Welcome!",
-        message: "Account created.",
+        title: "Account Created!",
+        message: "Please check your email to verify your account.",
         color: "green",
       });
-      navigate("/dashboard");
+      navigate("/login");
     } catch (err: any) {
       notifications.show({
         title: "Error",
@@ -90,10 +95,16 @@ export function RegisterPage() {
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
             <TextInput
-              label="Full Name"
-              placeholder="John Doe"
+              label="First Name"
+              placeholder="John"
               required
-              {...form.getInputProps("full_name")}
+              {...form.getInputProps("first_name")}
+            />
+            <TextInput
+              label="Last Name"
+              placeholder="Doe"
+              required
+              {...form.getInputProps("last_name")}
             />
             <TextInput
               label="Username"
@@ -107,15 +118,22 @@ export function RegisterPage() {
               required
               {...form.getInputProps("email")}
             />
+            <TextInput
+              label="Company Name (Optional)"
+              placeholder="Acme Corp"
+              {...form.getInputProps("company_name")}
+            />
             <PasswordInput
               label="Password"
+              placeholder="Min 8 characters"
               required
               {...form.getInputProps("password")}
             />
             <PasswordInput
               label="Confirm Password"
+              placeholder="Re-enter password"
               required
-              {...form.getInputProps("confirm_password")}
+              {...form.getInputProps("password_confirmation")} // ✅ Matches schema
             />
             <Button type="submit" fullWidth loading={loading}>
               Create Account

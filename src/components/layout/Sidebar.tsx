@@ -16,6 +16,7 @@ import {
   IconChartBar,
   IconSettings,
   IconAlertTriangle,
+  IconThumbUp,
 } from "@tabler/icons-react";
 import classes from "./Sidebar.module.css";
 
@@ -67,6 +68,12 @@ const navItems: NavItemConfig[] = [
     label: "Suppliers",
     path: "/suppliers",
     icon: <IconTruck size={18} />,
+    section: "CRM",
+  },
+  {
+    label: "Leads",
+    path: "/leads",
+    icon: <IconThumbUp size={18} />,
     section: "CRM",
   },
   {

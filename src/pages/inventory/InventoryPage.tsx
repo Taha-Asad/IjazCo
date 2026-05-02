@@ -44,7 +44,6 @@ export function InventoryPage() {
       inventoryApi.list({
         page: Number(page),
         per_page: Number(PAGE_SIZE),
-        company_id: user?.company_id,
         ...(debouncedSearch?.trim() && { search: debouncedSearch }),
       }),
   });
@@ -168,11 +167,11 @@ export function InventoryPage() {
                     <IconEye size={16} />
                   </ActionIcon>
                 </Tooltip>
-                <Tooltip label="Edit">
+                 <Tooltip label="Edit">
                   <ActionIcon
                     variant="subtle"
                     color="blue"
-                    onClick={() => navigate(`/inventory/${item.id}?edit=true`)}
+                    onClick={() => navigate(`/inventory/${item.id}/edit`)}
                   >
                     <IconEdit size={16} />
                   </ActionIcon>

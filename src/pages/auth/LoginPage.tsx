@@ -44,10 +44,11 @@ export function LoginPage() {
     setError(null);
     try {
       const res = await authApi.login(values);
-      // The login response returns { user: UserInfo } directly
-      const userData = res.user || res.data?.user || res.data;
+      // The API client returns response.data directly
+      // LoginResponse has: { access_token, refresh_token, user }
+      const userData = res.user;
       setUser(userData);
-      setTokens(res.access_token, res.refresh_token || res.data?.refresh_token);
+      setTokens(res.access_token, res.refresh_token);
       notifications.show({
         title: "Welcome back!",
         message: `Hello, ${userData.first_name} ${userData.last_name}`,

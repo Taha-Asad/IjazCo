@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Stack,
-  Group,
-  ActionIcon,
-  Tooltip,
-  Badge,
-  Modal,
-  Text,
-} from "@mantine/core";
+import { Stack, Group, Badge, ActionIcon, Tooltip, Modal, Select } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "mantine-datatable";
@@ -17,73 +9,106 @@ import { IconPlus, IconEye, IconTrash } from "@tabler/icons-react";
 import { PageHeader } from "../../components/common/PageHeader";
 import { SearchInput } from "../../components/common/SearchInput";
 import { openConfirmModal } from "../../components/common/ConfirmModal";
-import { CustomerForm } from "../../components/forms/CustomerForm";
-import { customersApi, type Customer } from "../../api/customers";
+import { LeadForm } from "../../components/forms/LeadForm";
+import { leadsApi, type Lead } from "../../api/leads";
 import { useDebounce } from "../../hooks/useDebounce";
-import { formatCurrency } from "../../utils/formatters";
-import { useAuthStore } from "../../store/authStore";
 
 const PAGE_SIZE = 20;
 
-export function CustomersPage() {
+const STATUS_COLORS: Record<string, string> = {
+  new: "blue",
+  contacted: "cyan",
+  qualified: "indigo",
+  proposal: "violet",
+  negotiation: "orange",
+  won: "green",
+  lost: "red",
+};
+
+export function LeadsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [opened, { open, close }] = useDisclosure(false);
   const debouncedSearch = useDebounce(search, 400);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["customers", page, debouncedSearch],
+    queryKey: ["leads", page, debouncedSearch, statusFilter],
     queryFn: () =>
-      customersApi.list({
+      leadsApi.list({
         page: Number(page),
         per_page: Number(PAGE_SIZE),
         ...(debouncedSearch?.trim() && { search: debouncedSearch }),
+        ...(statusFilter && { status: statusFilter }),
       }),
   });
 
   const createMutation = useMutation({
-    mutationFn: (v: any) =>
-      customersApi.create({ ...v, company_id: user?.company_id }),
+    mutationFn: (v: any) => leadsApi.create(v),
     onSuccess: (res) => {
       notifications.show({
         title: "Created",
-        message: "Customer created.",
+        message: "Lead created successfully.",
         color: "green",
       });
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
       close();
-      navigate(`/customers/${res.data.id}`);
+      navigate(`/leads/${res.data.id}`);
+    },
+    onError: (error: any) => {
+      notifications.show({
+        title: "Error",
+        message: error?.response?.data?.message || "Failed to create lead",
+        color: "red",
+      });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => customersApi.delete(id),
+    mutationFn: (id: string) => leadsApi.delete(id),
     onSuccess: () => {
       notifications.show({
         title: "Deleted",
-        message: "Customer deleted.",
+        message: "Lead deleted successfully.",
         color: "green",
       });
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
   });
 
   return (
     <Stack>
       <PageHeader
-        title="Customers"
-        description="Manage customer accounts"
-        breadcrumbs={[{ label: "Home", path: "/" }, { label: "Customers" }]}
+        title="Leads"
+        description="Manage your sales leads"
+        breadcrumbs={[{ label: "Home", path: "/" }, { label: "Leads" }]}
         action={{
-          label: "Add Customer",
+          label: "Add Lead",
           icon: <IconPlus size={16} />,
           onClick: open,
         }}
       />
-      <SearchInput value={search} onChange={setSearch} w={280} />
+      <Group>
+        <SearchInput value={search} onChange={setSearch} w={280} />
+        <Select
+          placeholder="Filter by status"
+          clearable
+          data={[
+            { value: "new", label: "New" },
+            { value: "contacted", label: "Contacted" },
+            { value: "qualified", label: "Qualified" },
+            { value: "proposal", label: "Proposal" },
+            { value: "negotiation", label: "Negotiation" },
+            { value: "won", label: "Won" },
+            { value: "lost", label: "Lost" },
+          ]}
+          value={statusFilter}
+          onChange={(v) => setStatusFilter(v)}
+          w={200}
+        />
+      </Group>
       <DataTable
         records={data?.data || []}
         fetching={isLoading}
@@ -92,42 +117,38 @@ export function CustomersPage() {
         page={page}
         onPageChange={setPage}
         columns={[
-          { accessor: "name", title: "Customer Name" },
+          { accessor: "lead_number", title: "Lead #", width: 120 },
+          { accessor: "name", title: "Name" },
+          { accessor: "company_name", title: "Company" },
           { accessor: "email", title: "Email" },
-          { accessor: "phone", title: "Phone" },
           {
-            accessor: "credit_limit",
-            title: "Credit Limit",
-            render: (c) => formatCurrency(c.credit_limit),
-          },
-          {
-            accessor: "current_balance",
-            title: "Balance",
-            render: (c) => (
-              <Text c={c.current_balance > 0 ? "red" : "green"} size="sm">
-                {formatCurrency(c.current_balance)}
-              </Text>
-            ),
-          },
-          {
-            accessor: "is_active",
+            accessor: "status",
             title: "Status",
-            render: (c) => (
-              <Badge color={c.is_active ? "green" : "gray"} variant="light">
-                {c.is_active ? "Active" : "Inactive"}
+            width: 120,
+            render: (lead: Lead) => (
+              <Badge color={STATUS_COLORS[lead.status] || "gray"} variant="light">
+                {lead.status}
               </Badge>
             ),
+          },
+          {
+            accessor: "estimated_value",
+            title: "Value",
+            render: (lead: Lead) =>
+              lead.estimated_value
+                ? `$${lead.estimated_value.toLocaleString()}`
+                : "—",
           },
           {
             accessor: "actions",
             title: "",
             width: 80,
-            render: (c: Customer) => (
+            render: (lead: Lead) => (
               <Group gap="xs" justify="flex-end">
                 <Tooltip label="View">
                   <ActionIcon
                     variant="subtle"
-                    onClick={() => navigate(`/customers/${c.id}`)}
+                    onClick={() => navigate(`/leads/${lead.id}`)}
                   >
                     <IconEye size={16} />
                   </ActionIcon>
@@ -138,10 +159,10 @@ export function CustomersPage() {
                     color="red"
                     onClick={() =>
                       openConfirmModal({
-                        title: "Delete Customer",
-                        message: `Delete customer "${c.name}"?`,
+                        title: "Delete Lead",
+                        message: `Delete lead "${lead.name}"?`,
                         danger: true,
-                        onConfirm: () => deleteMutation.mutate(c.id),
+                        onConfirm: () => deleteMutation.mutate(lead.id),
                       })
                     }
                   >
@@ -158,8 +179,8 @@ export function CustomersPage() {
         striped
       />
 
-      <Modal opened={opened} onClose={close} title="Create Customer" size="md">
-        <CustomerForm
+      <Modal opened={opened} onClose={close} title="Create Lead" size="md">
+        <LeadForm
           onSubmit={async (v) => {
             await createMutation.mutateAsync(v);
           }}

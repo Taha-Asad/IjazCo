@@ -13,11 +13,12 @@ use validator::Validate;
 
 use crate::{
     config::DbPool,
+    handlers::roles::PaginationParams,
     middleware::auth::{verify_company_access, AuthUser},
     models::category::{Category, CreateCategoryRequest, UpdateCategoryRequest},
     utils::{
         error::{AppError, Result},
-        response::{created, no_content, success},
+        response::{created, no_content, paginated, success},
     },
     AppState,
 };
@@ -30,22 +31,36 @@ use crate::{
     security(
         ("bearer_auth" = [])
     ),
+    params(
+        ("page" = Option<i64>, Query, description = "Page number (default: 1)"),
+        ("per_page" = Option<i64>, Query, description = "Items per page (default: 20)"),
+        ("search" = Option<String>, Query, description = "Search term"),
+        ("parent_id" = Option<Uuid>, Query, description = "Filter by parent category ID"),
+    ),
     responses(
-        (status = 200, description = "List of categories", body = Vec<Category>),
+        (status = 200, description = "List of categories"),
         (status = 401, description = "Unauthorized")
     )
 )]
 pub async fn list_categories(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
-) -> Result<Json<Vec<Category>>> {
+    Query(params): Query<PaginationParams>,
+) -> Result<impl axum::response::IntoResponse> {
     tracing::info!(
         user_id = %auth_user.id,
         company_id = %auth_user.company_id,
         "Listing categories"
     );
-    
-    let categories = match state.db.as_ref() {
+
+    // Get pagination values
+    let current_page = params.page();
+    let per_page = params.per_page();
+    let offset = params.offset() as usize;
+    let per_page_usize = per_page as usize;
+
+    // Fetch all categories for the company
+    let all_categories = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
             Category::list_by_company_pg(&pool, auth_user.company_id, false).await?
         }
@@ -53,13 +68,22 @@ pub async fn list_categories(
             Category::list_by_company_sqlite(&pool, auth_user.company_id, false).await?
         }
     };
-    
+
+    let total = all_categories.len() as i64;
+
+    // Apply in-memory pagination
+    let paginated_categories: Vec<Category> = all_categories
+        .into_iter()
+        .skip(offset)
+        .take(per_page_usize)
+        .collect();
+
     tracing::debug!(
-        count = categories.len(),
+        count = paginated_categories.len(),
         "Categories retrieved successfully"
     );
-    
-    Ok(Json(categories))
+
+    Ok(paginated(paginated_categories, current_page, per_page, total))
 }
 
 // ===== GET CATEGORY ENDPOINT =====

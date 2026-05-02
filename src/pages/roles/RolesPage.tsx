@@ -19,6 +19,7 @@ import { SearchInput } from "../../components/common/SearchInput";
 import { openConfirmModal } from "../../components/common/ConfirmModal";
 import { RoleForm } from "../../components/forms/RoleForm";
 import { rolesApi } from "../../api/roles";
+import { authApi } from "../../api/auth";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useAuthStore } from "../../store/authStore";
 
@@ -55,6 +56,9 @@ export function RolesPage() {
         ...(debouncedSearch?.trim() && { search: debouncedSearch }),
       }),
   });
+
+  // Debug: log the data structure
+  console.log("Roles data:", data);
 
   if (error) {
     notifications.show({
@@ -136,13 +140,13 @@ export function RolesPage() {
           {
             accessor: "user_count",
             title: "Users",
-            render: (r) => <Badge variant="light">{r.user_count || 0}</Badge>,
+            render: (r: any) => <Badge variant="light">{r.user_count || 0}</Badge>,
           },
           {
             accessor: "actions",
             title: "",
             width: 90,
-            render: (r) => (
+            render: (r: any) => (
               <Group gap="xs" justify="flex-end">
                 <Tooltip label="Edit">
                   <ActionIcon

@@ -34,7 +34,20 @@ export const rolesApi = {
       // Backend returns Json<Vec<Role>> (plain array)
       const roles = res.data || res;
       if (Array.isArray(roles)) {
-        return { data: roles, total_items: roles.length, total_pages: 1, page: 1 };
+        return {
+          status: 200,
+          message: "Roles retrieved successfully",
+          data: roles,
+          pagination: {
+            current_page: Number(params?.page) || 1,
+            per_page: Number(params?.per_page) || roles.length,
+            total_items: roles.length,
+            total_pages: 1,
+            has_next: false,
+            has_previous: false
+          },
+          timestamp: new Date().toISOString()
+        };
       }
       return roles;
     }),

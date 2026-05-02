@@ -56,18 +56,8 @@ where
 }
 
 // Helper function to get the JWT secret from state
-// Adjust this based on your actual AppState structure
 fn get_jwt_secret(state: &AppState) -> &str {
-    // Option 1: If jwt_secret is directly on AppState
-    // &state.jwt_secret
-    
-    // Option 2: If jwt_secret is in a config sub-struct
-    // &state.config.jwt_secret
-    
-    // Option 3: If it's in settings
     &state.config.jwt_secret
-    
-    // Use whichever matches your actual AppState definition
 }
 
 // Helper function to access the database pool
