@@ -47,6 +47,9 @@ pub enum AppError {
         available: i32,
         requested: i32,
     },
+    
+    // Internal errors
+    Internal(String),
     InvalidStatus {
         entity: String,
         current_status: String,
@@ -131,6 +134,7 @@ impl fmt::Display for AppError {
             AppError::InternalError(msg) => write!(f, "Internal error: {}", msg),
             AppError::ConfigError(msg) => write!(f, "Configuration error: {}", msg),
             AppError::SerializationError(e) => write!(f, "Serialization error: {}", e),
+            AppError::Internal(msg) => write!(f, "Internal error: {}", msg),
         }
     }
 }
@@ -169,6 +173,7 @@ impl IntoResponse for AppError {
             AppError::FileUploadError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "FILE_UPLOAD_ERROR"),
             AppError::ExternalServiceError(_) => (StatusCode::BAD_GATEWAY, "EXTERNAL_SERVICE_ERROR"),
             AppError::HttpError(_) => (StatusCode::BAD_GATEWAY, "HTTP_ERROR"),
+            AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
         };
         
         let error_response = ErrorResponse {

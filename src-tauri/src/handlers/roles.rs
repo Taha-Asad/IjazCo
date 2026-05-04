@@ -19,7 +19,7 @@ use crate::{
     config::DbPool,
     middleware::auth::{ AuthUser, verify_company_access },
     models::user::{ CreateRoleRequest, Role, UpdateRoleRequest },
-    utils::{ error::{ AppError, Result }, response::{ created, no_content, paginated } },
+    utils::{ error::{ AppError, Result }, response::{ created, no_content, paginated, success } },
 };
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct PaginationParams {
@@ -149,7 +149,7 @@ pub async fn get_role(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<Role>> {
+) -> Result<impl axum::response::IntoResponse> {
     tracing::debug!(
         user_id = %auth_user.id,
         role_id = %id,

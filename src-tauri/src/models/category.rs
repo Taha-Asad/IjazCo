@@ -355,6 +355,29 @@ impl Category {
         builder.build_query_as::<Category>().fetch_one(pool).await
     }
 
+    // ===== REASSIGN SUBCATEGORIES TO TOP-LEVEL =====
+    pub async fn reassign_subcategories_to_top_pg(
+        pool: &PgPool,
+        parent_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE categories SET parent_id = NULL WHERE parent_id = $1")
+            .bind(parent_id)
+            .execute(pool)
+            .await
+            .map(|_| ())
+    }
+
+    pub async fn reassign_subcategories_to_top_sqlite(
+        pool: &SqlitePool,
+        parent_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE categories SET parent_id = NULL WHERE parent_id = ?")
+            .bind(parent_id)
+            .execute(pool)
+            .await
+            .map(|_| ())
+    }
+
     // ===== DELETE =====
     pub async fn delete_pg(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query("DELETE FROM categories WHERE id = $1")

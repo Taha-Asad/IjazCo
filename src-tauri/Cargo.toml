@@ -18,8 +18,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [features]
-default = ["sqlite"] # Set sqlite as default for prototype
-# default = ["postgres"]  # Use this for production
+# default = ["sqlite"] # Set sqlite as default for prototype
+default = ["postgres"]  # Use this for production
 sqlite = ["sqlx/sqlite"]
 postgres = ["sqlx/postgres"]
 
@@ -181,3 +181,7 @@ panic = "abort"   # Abort on panic for smaller binary
 # Development profile for faster compilation
 opt-level = 0 # No optimization for faster builds
 
+
+[[bin]]
+name = "migrate_leads"
+path = "src/bin/migrate_leads.rs"

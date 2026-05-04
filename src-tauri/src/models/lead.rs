@@ -116,8 +116,6 @@ pub struct LeadWithDetails {
 // ===== CREATE LEAD REQUEST =====
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct CreateLeadRequest {
-    pub company_id: Uuid,
-
     #[validate(length(min = 1, max = 100))]
     #[schema(example = "John Doe")]
     pub name: String,
@@ -132,9 +130,12 @@ pub struct CreateLeadRequest {
     #[schema(example = "ABC Corp")]
     pub company_name: Option<String>,
 
+    // Accept both enum and string for flexibility
+    #[serde(deserialize_with = "deserialize_lead_status_option")]
     #[schema(example = "new")]
     pub status: Option<LeadStatus>,
 
+    #[serde(deserialize_with = "deserialize_lead_source_option")]
     #[schema(example = "website")]
     pub source: Option<LeadSource>,
 
@@ -162,8 +163,11 @@ pub struct UpdateLeadRequest {
 
     pub company_name: Option<String>,
 
+    // Accept both enum and string for flexibility
+    #[serde(deserialize_with = "deserialize_lead_status_option")]
     pub status: Option<LeadStatus>,
 
+    #[serde(deserialize_with = "deserialize_lead_source_option")]
     pub source: Option<LeadSource>,
 
     #[schema(value_type = f64)]
@@ -174,6 +178,53 @@ pub struct UpdateLeadRequest {
     pub assigned_to: Option<Uuid>,
 
     pub expected_close_date: Option<chrono::NaiveDate>,
+}
+
+// Helper to deserialize LeadStatus from string
+fn deserialize_lead_status_option<'de, D>(
+    deserializer: D,
+) -> Result<Option<LeadStatus>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+    let opt: Option<String> = Option::deserialize(deserializer)?;
+    match opt {
+        None => Ok(None),
+        Some(s) => match s.to_lowercase().as_str() {
+            "new" => Ok(Some(LeadStatus::New)),
+            "contacted" => Ok(Some(LeadStatus::Contacted)),
+            "qualified" => Ok(Some(LeadStatus::Qualified)),
+            "proposal" => Ok(Some(LeadStatus::Proposal)),
+            "negotiation" => Ok(Some(LeadStatus::Negotiation)),
+            "won" => Ok(Some(LeadStatus::Won)),
+            "lost" => Ok(Some(LeadStatus::Lost)),
+            _ => Err(D::Error::custom(format!("Invalid lead status: {}", s))),
+        },
+    }
+}
+
+// Helper to deserialize LeadSource from string
+fn deserialize_lead_source_option<'de, D>(
+    deserializer: D,
+) -> Result<Option<LeadSource>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+    let opt: Option<String> = Option::deserialize(deserializer)?;
+    match opt {
+        None => Ok(None),
+        Some(s) => match s.to_lowercase().as_str() {
+            "website" => Ok(Some(LeadSource::Website)),
+            "referral" => Ok(Some(LeadSource::Referral)),
+            "coldcall" => Ok(Some(LeadSource::ColdCall)),
+            "socialmedia" => Ok(Some(LeadSource::SocialMedia)),
+            "email" => Ok(Some(LeadSource::Email)),
+            "other" => Ok(Some(LeadSource::Other)),
+            _ => Err(D::Error::custom(format!("Invalid lead source: {}", s))),
+        },
+    }
 }
 
 // ===== POSTGRES IMPLEMENTATIONS =====
@@ -217,6 +268,7 @@ impl Lead {
     pub async fn create_pg(
         pool: &PgPool,
         req: CreateLeadRequest,
+        company_id: Uuid,
         user_id: Uuid,
     ) -> sqlx::Result<Lead> {
         let lead_number = format!(
@@ -233,7 +285,7 @@ impl Lead {
             RETURNING *
             "#,
         )
-        .bind(req.company_id)
+        .bind(company_id)
         .bind(lead_number)
         .bind(req.name)
         .bind(req.email)

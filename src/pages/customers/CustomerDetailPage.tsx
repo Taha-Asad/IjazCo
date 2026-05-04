@@ -21,7 +21,7 @@ export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data: customer, isLoading } = useQuery({
     queryKey: ["customer", id],
     queryFn: () => customersApi.getById(id!),
     enabled: !!id,
@@ -39,7 +39,6 @@ export function CustomerDetailPage() {
     },
   });
 
-  const customer = data?.data;
   if (isLoading) return <Skeleton height={400} />;
   if (!customer) return <Text>Customer not found.</Text>;
 
@@ -69,9 +68,9 @@ export function CustomerDetailPage() {
         />
         <StatCard
           title="Outstanding Balance"
-          value={formatCurrency(customer.current_balance)}
+          value={formatCurrency(customer.current_balance ?? 0)}
           icon={<IconCurrencyDollar size={20} />}
-          color={customer.current_balance > 0 ? "red" : "green"}
+          color={(customer.current_balance ?? 0) > 0 ? "red" : "green"}
         />
       </SimpleGrid>
 

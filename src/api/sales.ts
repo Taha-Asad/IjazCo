@@ -18,8 +18,7 @@ export const salesApi = {
       params,
     }),
 
-  getById: (id: string) =>
-    apiClient.get<ApiResponse<SalesInvoice>>(`sales/invoices/${id}`),
+  getById: (id: string) => apiClient.get<any>(`sales/invoices/${id}`),
 
   create: (data: CreateSalesInvoiceRequest) =>
     apiClient.post<ApiResponse<SalesInvoice>>("sales/invoices", data),

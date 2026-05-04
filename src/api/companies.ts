@@ -27,8 +27,6 @@ export interface CreateCompanyRequest {
 
 export const companiesApi = {
   list: (params?: PaginationParams) => {
-    // We create a clean object to ensure we don't send "" or undefined
-    // which can also cause 400 errors.
     const searchParams: any = {};
 
     if (params?.page) searchParams.page = Number(params.page);
@@ -40,8 +38,7 @@ export const companiesApi = {
     });
   },
 
-  getById: (id: string) =>
-    apiClient.get<ApiResponse<Company>>(`companies/${id}`),
+  getById: (id: string) => apiClient.get<any>(`companies/${id}`),
 
   create: (data: CreateCompanyRequest) =>
     apiClient.post<ApiResponse<Company>>("companies", data),

@@ -20,7 +20,7 @@ use crate::{
     },
     utils::{
         error::{AppError, Result},
-        response::{created, no_content, paginated},
+        response::{created, no_content, paginated, success},
     },
     AppState,
 };
@@ -138,7 +138,7 @@ pub async fn get_lead(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<LeadWithDetails>> {
+) -> Result<impl axum::response::IntoResponse> {
     let lead = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
             Lead::find_by_id_pg(pool, id).await?
@@ -177,15 +177,13 @@ pub async fn get_lead(
 pub async fn create_lead(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
-    Json(mut payload): Json<CreateLeadRequest>,
+    Json(payload): Json<CreateLeadRequest>,
 ) -> Result<impl axum::response::IntoResponse> {
     payload.validate()
         .map_err(|e| AppError::ValidationError(e.to_string()))?;
     
-    payload.company_id = auth_user.company_id;
-    
     let lead = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Lead::create_pg(pool, payload, auth_user.id).await?,
+        DbPool::Postgres(pool) => Lead::create_pg(pool, payload, auth_user.company_id, auth_user.id).await?,
         DbPool::Sqlite(pool) => {
             // TODO: Implement SQLite create
             return Err(AppError::InternalError("SQLite not yet implemented for leads".to_string()));
@@ -218,7 +216,7 @@ pub async fn update_lead(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
-    Json(payload): Json<UpdateLeadRequest>,
+    Json(mut payload): Json<UpdateLeadRequest>,
 ) -> Result<Json<Lead>> {
     payload.validate()
         .map_err(|e| AppError::ValidationError(e.to_string()))?;

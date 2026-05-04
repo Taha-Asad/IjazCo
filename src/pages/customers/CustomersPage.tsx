@@ -45,17 +45,29 @@ export function CustomersPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (v: any) =>
-      customersApi.create({ ...v, company_id: user?.company_id }),
-    onSuccess: (res) => {
+    mutationFn: (values: any) => {
+      // Auto-generate customer_code if not provided
+      const data = {
+        ...values,
+        customer_code: values.customer_code || `CUST-${Date.now().toString().slice(-6)}`,
+      };
+      return customersApi.create(data);
+    },
+    onSuccess: () => {
       notifications.show({
         title: "Created",
         message: "Customer created.",
         color: "green",
       });
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
       close();
-      navigate(`/customers/${res.data.id}`);
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (error: any) => {
+      notifications.show({
+        title: "Error",
+        message: error?.response?.data?.message || "Failed to create customer",
+        color: "red",
+      });
     },
   });
 
@@ -104,8 +116,8 @@ export function CustomersPage() {
             accessor: "current_balance",
             title: "Balance",
             render: (c) => (
-              <Text c={c.current_balance > 0 ? "red" : "green"} size="sm">
-                {formatCurrency(c.current_balance)}
+              <Text c={(c.current_balance ?? 0) > 0 ? "red" : "green"} size="sm">
+                {formatCurrency(c.current_balance ?? 0)}
               </Text>
             ),
           },

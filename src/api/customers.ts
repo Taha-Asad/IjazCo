@@ -14,7 +14,8 @@ export interface Customer {
   city?: string;
   country?: string;
   credit_limit: number;
-  current_balance: number;
+  current_balance?: number;
+  outstanding_balance?: number;
   company_id: string;
   is_active: boolean;
   total_invoices?: number;
@@ -22,14 +23,30 @@ export interface Customer {
   created_at: string;
 }
 
+function mapCustomerBalance(customer: any): Customer {
+  return {
+    ...customer,
+    current_balance: customer.current_balance ?? customer.outstanding_balance ?? 0,
+  };
+}
+
 export const customersApi = {
   list: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<Customer>>("customers", { params }),
+    apiClient.get<any>("customers", { params }).then(data => {
+      if (data?.data) {
+        data.data = data.data.map(mapCustomerBalance);
+      }
+      return data as PaginatedResponse<Customer>;
+    }),
 
   getById: (id: string) =>
-    apiClient.get<ApiResponse<Customer>>(`customers/${id}`),
+    apiClient.get<any>(`customers/${id}`).then(data => {
+      // apiClient.get already unwraps {success, data} if present
+      const customer = data?.data || data;
+      return mapCustomerBalance(customer);
+    }),
 
-  create: (data: Omit<Customer, "id" | "created_at" | "current_balance">) =>
+  create: (data: Omit<Customer, "id" | "created_at" | "current_balance" | "outstanding_balance">) =>
     apiClient.post<ApiResponse<Customer>>("customers", data),
 
   update: (id: string, data: Partial<Customer>) =>

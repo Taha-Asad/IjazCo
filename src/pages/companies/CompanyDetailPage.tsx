@@ -11,7 +11,7 @@ export function CompanyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["company", id],
     queryFn: () => companiesApi.getById(id!),
     enabled: !!id,
@@ -27,10 +27,18 @@ export function CompanyDetailPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["company", id] });
     },
+    onError: (error: any) => {
+      notifications.show({
+        title: "Error",
+        message: error?.response?.data?.message || "Failed to update company",
+        color: "red",
+      });
+    },
   });
 
-  const company = data?.data;
+  const company = data;
   if (isLoading) return <Skeleton height={400} />;
+  if (error) return <Text c="red">Error loading company: {error?.message}</Text>;
   if (!company) return <Text>Company not found.</Text>;
 
   return (

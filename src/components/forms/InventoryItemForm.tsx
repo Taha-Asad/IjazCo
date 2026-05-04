@@ -19,7 +19,7 @@ const schema = z.object({
   sku: z.string().min(1, "SKU required"),
   unit_price: z.number().min(0, "Price must be positive"),
   cost_price: z.number().min(0),
-  unit: z.string().min(1, "Unit required"),
+  unit_of_measure: z.string().min(1, "Unit required"),
   min_stock_level: z.number().min(0),
 });
 
@@ -54,7 +54,7 @@ export function InventoryItemForm({
       category_id: initialValues?.category_id || null,
       unit_price: initialValues?.unit_price || 0,
       cost_price: initialValues?.cost_price || 0,
-      unit: initialValues?.unit || "pcs",
+      unit_of_measure: initialValues?.unit_of_measure || initialValues?.unit || "pcs",
       min_stock_level: initialValues?.min_stock_level || 0,
       max_stock_level: initialValues?.max_stock_level || null,
       serial_number: initialValues?.serial_number || "",
@@ -72,8 +72,32 @@ export function InventoryItemForm({
     { value: "set", label: "Set" },
   ];
 
+  const handleSubmit = (values: any) => {
+    // Clean up data for backend
+    const submitData = { ...values };
+    // Map unit_price to selling_price for backend
+    if (submitData.unit_price !== undefined) {
+      submitData.selling_price = submitData.unit_price;
+      delete submitData.unit_price;
+    }
+    // Remove any 'unit' field if present (we use unit_of_measure now)
+    if (submitData.unit) {
+      delete submitData.unit;
+    }
+    // Add required fields with defaults
+    submitData.is_serialized = false;
+    submitData.is_batch_tracked = false;
+    submitData.reorder_level = 0;
+    submitData.reorder_quantity = 0;
+    submitData.lead_time_days = 0;
+    if (!submitData.tax_rate) {
+      submitData.tax_rate = 0;
+    }
+    return onSubmit(submitData);
+  };
+
   return (
-    <form onSubmit={form.onSubmit(onSubmit)}>
+    <form onSubmit={form.onSubmit(handleSubmit)}>
       <Stack>
         <SimpleGrid cols={2}>
           <TextInput
@@ -98,8 +122,9 @@ export function InventoryItemForm({
           label="Category"
           placeholder="Select category"
           data={categoryOptions}
-          clearable
-          {...form.getInputProps("category_id")}
+          value={form.values.category_id || ""}
+          onChange={(val) => form.setFieldValue("category_id", val || null)}
+          error={form.errors.category_id}
         />
         <Textarea
           label="Description"
@@ -130,7 +155,9 @@ export function InventoryItemForm({
             label="Unit"
             data={UNIT_OPTIONS}
             required
-            {...form.getInputProps("unit")}
+            value={form.values.unit_of_measure || ""}
+            onChange={(val) => form.setFieldValue("unit_of_measure", val)}
+            error={form.errors.unit_of_measure}
           />
           <NumberInput
             label="Min Stock Level"
@@ -140,8 +167,9 @@ export function InventoryItemForm({
           <NumberInput
             label="Max Stock Level"
             min={0}
-            __clearable
-            {...form.getInputProps("max_stock_level")}
+            value={form.values.max_stock_level}
+            onChange={(val) => form.setFieldValue("max_stock_level", val)}
+            error={form.errors.max_stock_level}
           />
         </SimpleGrid>
         {initialValues && (

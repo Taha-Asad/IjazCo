@@ -38,7 +38,7 @@ export function LeadForm({ initialValues, onSubmit, loading }: LeadFormProps) {
       company_name: initialValues?.company_name || "",
       status: initialValues?.status || "new",
       source: initialValues?.source || "other",
-      estimated_value: initialValues?.estimated_value || "",
+      estimated_value: initialValues?.estimated_value || undefined,
       description: initialValues?.description || "",
       expected_close_date: initialValues?.expected_close_date || "",
     },

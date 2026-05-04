@@ -21,7 +21,7 @@ export function SupplierDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data: supplierData, isLoading } = useQuery({
     queryKey: ["supplier", id],
     queryFn: () => suppliersApi.getById(id!),
     enabled: !!id,
@@ -39,7 +39,7 @@ export function SupplierDetailPage() {
     },
   });
 
-  const supplier = data?.data;
+  const supplier = supplierData;
   if (isLoading) return <Skeleton height={400} />;
   if (!supplier) return <Text>Supplier not found.</Text>;
 

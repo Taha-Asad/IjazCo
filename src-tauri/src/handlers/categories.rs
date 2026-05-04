@@ -107,7 +107,7 @@ pub async fn get_category(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<Category>> {
+) -> Result<impl axum::response::IntoResponse> {
     tracing::debug!(
         user_id = %auth_user.id,
         category_id = %id,
@@ -293,18 +293,6 @@ pub async fn delete_category(
     
     verify_company_access(&auth_user, category.company_id)?;
     
-    // Check for subcategories
-    let subcategory_count = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Category::count_subcategories_pg(&pool, id).await?,
-        DbPool::Sqlite(pool) => Category::count_subcategories_sqlite(&pool, id).await?,
-    };
-    
-    if subcategory_count > 0 {
-        return Err(AppError::OperationNotAllowed(
-            format!("Cannot delete category: {} subcategories exist", subcategory_count)
-        ));
-    }
-    
     // Check for items in this category
     let items_count = match state.db.as_ref() {
         DbPool::Postgres(pool) => Category::count_items_pg(&pool, id).await?,
@@ -313,13 +301,20 @@ pub async fn delete_category(
     
     if items_count > 0 {
         return Err(AppError::OperationNotAllowed(
-            format!("Cannot delete category: {} items are in this category", items_count)
+            format!("Cannot delete category: {} items are in this category. Please reassign or remove items first.", items_count)
         ));
     }
     
+    // Reassign subcategories to top-level before deletion
     match state.db.as_ref() {
-        DbPool::Postgres(pool) => Category::delete_pg(&pool, id).await?,
-        DbPool::Sqlite(pool) => Category::delete_sqlite(&pool, id).await?,
+        DbPool::Postgres(pool) => {
+            Category::reassign_subcategories_to_top_pg(&pool, id).await?;
+            Category::delete_pg(&pool, id).await?;
+        }
+        DbPool::Sqlite(pool) => {
+            Category::reassign_subcategories_to_top_sqlite(&pool, id).await?;
+            Category::delete_sqlite(&pool, id).await?;
+        }
     };
     
     tracing::info!(

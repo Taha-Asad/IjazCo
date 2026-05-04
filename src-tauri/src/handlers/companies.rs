@@ -9,7 +9,7 @@ use crate::{
     config::{AppState, DbPool},
     middleware::auth::AuthUser,
     models::company::{Company, CreateCompanyRequest, UpdateCompanyRequest},
-    utils::{error::{AppError, Result}, response::{created, no_content, success}},
+    utils::{error::{AppError, Result}, response::{created, no_content, paginated, success}},
 };
 
 use super::users::PaginationParams;
@@ -26,9 +26,29 @@ pub async fn list_companies(
     _auth_user: AuthUser,
     Query(params): Query<ListCompaniesQuery>,
 ) -> Result<impl axum::response::IntoResponse> {
-    let companies = match state.db.as_ref() {
-        DbPool::Postgres(pool) => Company::list_all_pg(pool).await?,
-        DbPool::Sqlite(pool) => Company::list_all_sqlite(pool).await?,
+    let (companies, total) = match state.db.as_ref() {
+        DbPool::Postgres(pool) => {
+            let companies = Company::list_paginated_pg(
+                pool,
+                params.pagination.limit(),
+                params.pagination.offset(),
+            ).await?;
+            let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM companies")
+                .fetch_one(pool)
+                .await?;
+            (companies, count)
+        }
+        DbPool::Sqlite(pool) => {
+            let companies = Company::list_paginated_sqlite(
+                pool,
+                params.pagination.limit(),
+                params.pagination.offset(),
+            ).await?;
+            let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM companies")
+                .fetch_one(pool)
+                .await?;
+            (companies, count)
+        }
     };
 
     let filtered: Vec<Company> = if params.active_only.unwrap_or(false) {
@@ -37,14 +57,14 @@ pub async fn list_companies(
         companies
     };
 
-    Ok(success("Companies retrieved", filtered))
+    Ok(paginated(filtered, params.pagination.page(), params.pagination.per_page(), total))
 }
 
 pub async fn get_company(
     State(state): State<Arc<AppState>>,
     _auth_user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<Company>> {
+) -> Result<impl axum::response::IntoResponse> {
     let company = match state.db.as_ref() {
         DbPool::Postgres(pool) => Company::find_by_id_pg(&pool, id).await?,
         DbPool::Sqlite(pool) => Company::find_by_id_sqlite(&pool, id).await?,

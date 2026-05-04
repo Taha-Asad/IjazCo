@@ -25,7 +25,8 @@ export interface CreateInventoryItemRequest {
   category_id?: string;
   unit_price: number;
   cost_price: number;
-  unit: string;
+  unit_of_measure: string;
+  unit?: string; // Keep for frontend compatibility
   min_stock_level: number;
   max_stock_level?: number;
   serial_number?: string;

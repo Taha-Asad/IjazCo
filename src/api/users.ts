@@ -13,7 +13,7 @@ export const usersApi = {
   list: (params?: PaginationParams) =>
     apiClient.get<PaginatedResponse<User>>("users", { params }),
 
-  getById: (id: string) => apiClient.get<ApiResponse<User>>(`users/${id}`),
+  getById: (id: string) => apiClient.get<any>(`users/${id}`),
 
   create: (data: CreateUserRequest) =>
     apiClient.post<ApiResponse<User>>("users", data),
@@ -26,6 +26,6 @@ export const usersApi = {
   changePassword: (id: string, data: { new_password: string }) =>
     apiClient.post<ApiResponse<null>>(`users/${id}/change-password`, data),
 
-  updateStatus: (id: string, data: UpdateUserStatusRequest) =>
-    apiClient.patch<ApiResponse<User>>(`users/${id}/status`, data),
+  updateStatus: (id: string, is_active: boolean) =>
+    apiClient.patch<any>(`users/${id}/status`, { status: is_active ? "active" : "inactive" }),
 };

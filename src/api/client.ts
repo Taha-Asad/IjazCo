@@ -14,20 +14,20 @@ class ApiClient {
         "Content-Type": "application/json",
       },
       // THIS FIXES THE "i64" ERROR:
-        // It ensures params are serialized correctly and empty values are removed
-        paramsSerializer: {
-          serialize: (params) => {
-            const parts: string[] = [];
-            Object.entries(params).forEach(([key, value]) => {
-              if (value === null || value === undefined || value === "") return;
-              // Don't convert numbers to strings
-              parts.push(
-                `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
-              );
-            });
-            return parts.join("&");
-          },
+      // It ensures params are serialized correctly and empty values are removed
+      paramsSerializer: {
+        serialize: (params) => {
+          const parts: string[] = [];
+          Object.entries(params).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === "") return;
+            // Don't convert numbers to strings
+            parts.push(
+              `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+            );
+          });
+          return parts.join("&");
         },
+      },
     });
 
     this.setupInterceptors();
@@ -79,6 +79,16 @@ class ApiClient {
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.instance.get(url, config);
+    // Handle both {data: {...}} and direct {...} responses
+    const data = response.data as any;
+    if (
+      data &&
+      typeof data === "object" &&
+      "data" in data &&
+      "success" in data
+    ) {
+      return data.data;
+    }
     return response.data;
   }
 
@@ -92,6 +102,16 @@ class ApiClient {
       data,
       config,
     );
+    // Handle both {data: {...}} and direct {...} responses
+    const respData = response.data as any;
+    if (
+      respData &&
+      typeof respData === "object" &&
+      "data" in respData &&
+      "success" in respData
+    ) {
+      return respData.data;
+    }
     return response.data;
   }
 
@@ -105,6 +125,16 @@ class ApiClient {
       data,
       config,
     );
+    // Handle both {data: {...}} and direct {...} responses
+    const respData = response.data as any;
+    if (
+      respData &&
+      typeof respData === "object" &&
+      "data" in respData &&
+      "success" in respData
+    ) {
+      return respData.data;
+    }
     return response.data;
   }
 
@@ -118,11 +148,31 @@ class ApiClient {
       data,
       config,
     );
+    // Handle both {data: {...}} and direct {...} responses
+    const respData = response.data as any;
+    if (
+      respData &&
+      typeof respData === "object" &&
+      "data" in respData &&
+      "success" in respData
+    ) {
+      return respData.data;
+    }
     return response.data;
   }
 
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.instance.delete(url, config);
+    // Handle both {data: {...}} and direct {...} responses
+    const respData = response.data as any;
+    if (
+      respData &&
+      typeof respData === "object" &&
+      "data" in respData &&
+      "success" in respData
+    ) {
+      return respData.data;
+    }
     return response.data;
   }
 }

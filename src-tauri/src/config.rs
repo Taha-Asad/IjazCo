@@ -1,5 +1,5 @@
 // src/config.rs
-use sqlx::{PgPool, Sqlite, SqlitePool};
+use sqlx::{PgPool, SqlitePool};
 use std::sync::Arc;
 #[derive(Clone)]
 pub enum DbPool {
@@ -58,8 +58,11 @@ impl AppState {
             let _test = sqlx::query("SELECT 1").fetch_one(&pool).await.unwrap();
             
             // Verify foreign keys is enabled
-            let row: (i32,) = sqlx::query_as::<Sqlite, _>("PRAGMA foreign_keys").fetch_one(&pool).await.unwrap();
-            println!("Foreign keys enabled: {}", row.0);
+            let fk_enabled: (i32,) = sqlx::query_as("PRAGMA foreign_keys")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+            println!("Foreign keys enabled: {}", fk_enabled.0);
             
             DbPool::Sqlite(pool)
             

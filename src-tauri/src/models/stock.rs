@@ -3,13 +3,13 @@
 // Handles stock levels, movements, transfers, and adjustments
 
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool, SqlitePool, Postgres, Sqlite};
 use uuid::Uuid;
 use validator::Validate;
 use utoipa::ToSchema;
-use sqlx::types::Decimal;
-use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::prelude::{ToPrimitive, FromPrimitive};
 
 // ===== STOCK MOVEMENT TYPE ENUM =====
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, sqlx::Type, PartialEq, Eq)]
@@ -400,7 +400,7 @@ impl From<StockMovementSqlite> for StockMovement {
             to_branch_id: s.to_branch_id,
             movement_type: s.movement_type,
             quantity: s.quantity,
-            unit_cost: s.unit_cost.map(|v| Decimal::from_f64_retain(v).unwrap_or_default()),
+            unit_cost: s.unit_cost.map(|v| Decimal::from_f64(v).unwrap_or_default()),
             reference_type: s.reference_type,
             reference_id: s.reference_id,
             batch_number: s.batch_number,
@@ -434,12 +434,12 @@ impl From<StockWithItemRowSqlite> for StockWithItem {
             item_sku: row.item_sku,
             item_name: row.item_name,
             item_unit: row.item_unit,
-            item_cost_price: Decimal::from_f64_retain(row.item_cost_price).unwrap_or_default(),
-            item_selling_price: Decimal::from_f64_retain(row.item_selling_price).unwrap_or_default(),
+            item_cost_price: Decimal::from_f64(row.item_cost_price).unwrap_or_default(),
+            item_selling_price: Decimal::from_f64(row.item_selling_price).unwrap_or_default(),
             item_reorder_level: row.item_reorder_level,
             branch_name: row.branch_name,
-            total_cost_value: Decimal::from_f64_retain(row.total_cost_value).unwrap_or_default(),
-            total_selling_value: Decimal::from_f64_retain(row.total_selling_value).unwrap_or_default(),
+            total_cost_value: Decimal::from_f64(row.total_cost_value).unwrap_or_default(),
+            total_selling_value: Decimal::from_f64(row.total_selling_value).unwrap_or_default(),
         }
     }
 }
@@ -455,7 +455,7 @@ impl From<StockMovementWithDetailsRowSqlite> for StockMovementWithDetails {
                 to_branch_id: row.to_branch_id,
                 movement_type: row.movement_type,
                 quantity: row.quantity,
-                unit_cost: row.unit_cost.map(|v| Decimal::from_f64_retain(v).unwrap_or_default()),
+                unit_cost: row.unit_cost.map(|v| Decimal::from_f64(v).unwrap_or_default()),
                 reference_type: row.reference_type,
                 reference_id: row.reference_id,
                 batch_number: row.batch_number,
@@ -470,7 +470,7 @@ impl From<StockMovementWithDetailsRowSqlite> for StockMovementWithDetails {
             from_branch_name: row.from_branch_name,
             to_branch_name: row.to_branch_name,
             created_by_username: row.created_by_username,
-            total_value: row.total_value.map(|v| Decimal::from_f64_retain(v).unwrap_or_default()),
+            total_value: row.total_value.map(|v| Decimal::from_f64(v).unwrap_or_default()),
         }
     }
 }
@@ -1368,8 +1368,8 @@ impl Stock {
         .await?;
         
         Ok((
-            Decimal::from_f64_retain(result.0.unwrap_or(0.0)).unwrap_or_default(),
-            Decimal::from_f64_retain(result.1.unwrap_or(0.0)).unwrap_or_default(),
+            Decimal::from_f64(result.0.unwrap_or(0.0)).unwrap_or_default(),
+            Decimal::from_f64(result.1.unwrap_or(0.0)).unwrap_or_default(),
         ))
     }
 }

@@ -40,8 +40,7 @@ export const suppliersApi = {
   list: (params?: PaginationParams) =>
     apiClient.get<PaginatedResponse<Supplier>>("suppliers", { params }),
 
-  getById: (id: string) =>
-    apiClient.get<ApiResponse<Supplier>>(`suppliers/${id}`),
+  getById: (id: string) => apiClient.get<any>(`suppliers/${id}`),
 
   create: (data: CreateSupplierRequest) =>
     apiClient.post<ApiResponse<Supplier>>("suppliers", data),

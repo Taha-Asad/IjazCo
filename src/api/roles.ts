@@ -52,7 +52,7 @@ export const rolesApi = {
       return roles;
     }),
 
-  getById: (id: string) => apiClient.get<ApiResponse<Role>>(`roles/${id}`),
+  getById: (id: string) => apiClient.get<any>(`roles/${id}`),
 
   create: (data: CreateRoleRequest) =>
     apiClient.post<ApiResponse<Role>>("roles", data),

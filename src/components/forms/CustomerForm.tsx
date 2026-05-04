@@ -12,6 +12,7 @@ import { z } from "zod";
 import { zodResolver } from "mantine-form-zod-resolver";
 
 const schema = z.object({
+  customer_code: z.string().min(1, "Customer code required").optional(),
   name: z.string().min(2, "Name required"),
   email: z.string().email("Valid email").optional().or(z.literal("")),
   phone: z.string().optional(),
@@ -35,6 +36,7 @@ export function CustomerForm({
   const form = useForm({
     validate: zodResolver(schema),
     initialValues: {
+      customer_code: initialValues?.customer_code || "",
       name: initialValues?.name || "",
       email: initialValues?.email || "",
       phone: initialValues?.phone || "",
@@ -49,6 +51,12 @@ export function CustomerForm({
   return (
     <form onSubmit={form.onSubmit(onSubmit)}>
       <Stack>
+        <TextInput
+          label="Customer Code"
+          placeholder="e.g. CUST-001"
+          required={!initialValues}
+          {...form.getInputProps("customer_code")}
+        />
         <TextInput
           label="Customer Name"
           placeholder="Acme Labs"

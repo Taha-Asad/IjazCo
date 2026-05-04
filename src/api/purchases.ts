@@ -43,8 +43,7 @@ export const purchasesApi = {
       params,
     }),
 
-  getById: (id: string) =>
-    apiClient.get<ApiResponse<PurchaseOrder>>(`purchases/orders/${id}`),
+  getById: (id: string) => apiClient.get<any>(`purchases/orders/${id}`),
 
   create: (data: CreatePurchaseOrderRequest) =>
     apiClient.post<ApiResponse<PurchaseOrder>>("purchases/orders", data),

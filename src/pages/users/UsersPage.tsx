@@ -63,7 +63,7 @@ export function UsersPage() {
 
   const statusMutation = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      usersApi.updateStatus(id, { is_active }),
+      usersApi.updateStatus(id, is_active),
     onSuccess: () => {
       notifications.show({
         title: "Updated",
@@ -71,6 +71,14 @@ export function UsersPage() {
         color: "green",
       });
       queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || "Failed to update status";
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
     },
   });
 
@@ -126,19 +134,19 @@ export function UsersPage() {
           { accessor: "username", title: "Username" },
           { accessor: "role_name", title: "Role" },
           {
-            accessor: "is_active",
+            accessor: "status",
             title: "Status",
             render: (user) => (
-              <Badge color={user.is_active ? "green" : "gray"} variant="light">
-                {user.is_active ? "Active" : "Inactive"}
+              <Badge color={user.status === "active" ? "green" : "gray"} variant="light">
+                {user.status}
               </Badge>
             ),
           },
           {
-            accessor: "last_login",
+            accessor: "last_login_at",
             title: "Last Login",
             render: (user) =>
-              user.last_login ? formatDate(user.last_login) : "Never",
+              user.last_login_at ? formatDate(user.last_login_at) : "Never",
           },
           {
             accessor: "actions",
@@ -166,7 +174,7 @@ export function UsersPage() {
                   </Menu.Item>
                   <Menu.Item
                     leftSection={
-                      user.is_active ? (
+                      user.status === "active" ? (
                         <IconUserX size={14} />
                       ) : (
                         <IconUserCheck size={14} />
@@ -175,11 +183,11 @@ export function UsersPage() {
                     onClick={() =>
                       statusMutation.mutate({
                         id: user.id,
-                        is_active: !user.is_active,
+                        is_active: user.status !== "active",
                       })
                     }
                   >
-                    {user.is_active ? "Deactivate" : "Activate"}
+                    {user.status === "active" ? "Deactivate" : "Activate"}
                   </Menu.Item>
                   <Menu.Divider />
                   <Menu.Item

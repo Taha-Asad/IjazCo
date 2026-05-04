@@ -10,7 +10,7 @@ export function RoleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data: roleData, isLoading, error } = useQuery({
     queryKey: ["role", id],
     queryFn: () => rolesApi.getById(id!),
     enabled: !!id,
@@ -18,10 +18,15 @@ export function RoleDetailPage() {
 
   const updateMutation = useMutation({
     mutationFn: async (values: any) => {
-      await rolesApi.update(id!, {
+      // Only send role_type for non-system roles
+      const updateData: any = {
         name: values.name,
         description: values.description,
-      });
+      };
+      if (roleData && !roleData.is_system) {
+        updateData.role_type = values.role_type;
+      }
+      await rolesApi.update(id!, updateData);
       await rolesApi.updatePermissions(id!, {
         permissions: values.permissions,
       });
@@ -34,10 +39,19 @@ export function RoleDetailPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["role", id] });
     },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || "Failed to update role";
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    },
   });
 
-  const role = data?.data;
+  const role = roleData;
   if (isLoading) return <Skeleton height={400} />;
+  if (error) return <Text c="red">Error loading role: {error?.message}</Text>;
   if (!role) return <Text>Role not found.</Text>;
 
   return (

@@ -194,7 +194,7 @@ pub async fn get_user(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<UserSafe>> {
+) -> Result<impl axum::response::IntoResponse> {
     tracing::debug!(
         user_id = %auth_user.id,
         target_user_id = %id,
@@ -226,7 +226,8 @@ pub async fn get_user(
         "User retrieved successfully"
     );
     
-    Ok(Json(user.into()))
+    let user_safe: UserSafe = user.into();
+    Ok(Json(user_safe))
 }
 
 // ===== CREATE USER ENDPOINT =====

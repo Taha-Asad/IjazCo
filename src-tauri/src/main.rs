@@ -1,6 +1,7 @@
 // src/main.rs
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::{cors::CorsLayer, trace::TraceLayer, compression::CompressionLayer};
+use tower::make::Shared;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 use dotenvy::dotenv;
@@ -137,7 +138,7 @@ info!("Seed data verified.");
     let state = Arc::new(app_state);
     let port: u16 = std::env::var("PORT").unwrap_or_else(|_| "8000".to_string()).parse()?;
     
-    let app = create_router(state.clone())
+    let app= create_router(state.clone())
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .layer(CompressionLayer::new())
         .layer(CorsLayer::permissive())
@@ -146,8 +147,8 @@ info!("Seed data verified.");
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     info!("Server starting on http://{}", addr);
     
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
-    axum::serve(listener, app).with_graceful_shutdown(shutdown_signal()).await?;
+let listener = tokio::net::TcpListener::bind(&addr).await?;
+axum::serve(listener, app).await?;
     
     Ok(())
 }

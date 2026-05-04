@@ -23,7 +23,7 @@ export function LeadDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: leadData, isLoading } = useQuery({
+  const { data: lead, isLoading } = useQuery({
     queryKey: ["leads", id],
     queryFn: () => leadsApi.getById(id!),
     enabled: !!id,
@@ -41,8 +41,6 @@ export function LeadDetailPage() {
       navigate("/leads");
     },
   });
-
-  const lead = leadData?.data;
 
   if (isLoading || !lead) {
     return <div>Loading...</div>;
@@ -113,7 +111,7 @@ export function EditLeadPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: leadData, isLoading } = useQuery({
+  const { data: lead, isLoading } = useQuery({
     queryKey: ["leads", id],
     queryFn: () => leadsApi.getById(id!),
     enabled: !!id,
@@ -132,8 +130,6 @@ export function EditLeadPage() {
       navigate(`/leads/${id}`);
     },
   });
-
-  const lead = leadData?.data;
 
   if (isLoading || !lead) {
     return <div>Loading...</div>;

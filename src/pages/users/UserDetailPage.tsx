@@ -12,6 +12,7 @@ import {
   Skeleton,
   PasswordInput,
 } from "@mantine/core";
+import { useForm } from "@mantine/form";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
@@ -28,7 +29,7 @@ export function UserDetailPage() {
   const queryClient = useQueryClient();
   const defaultTab = params.get("tab") || "details";
 
-  const { data, isLoading } = useQuery({
+  const { data: userData, isLoading } = useQuery({
     queryKey: ["user", id],
     queryFn: () => usersApi.getById(id!),
     enabled: !!id,
@@ -54,10 +55,13 @@ export function UserDetailPage() {
     },
   });
 
-  const user = data?.data;
+  const user = userData;
+  console.log(user);
 
   if (isLoading) return <Skeleton height={400} />;
   if (!user) return <Text>User not found.</Text>;
+
+  const isActive = user.status === "active";
 
   return (
     <Stack>
@@ -82,12 +86,11 @@ export function UserDetailPage() {
             {user.first_name.charAt(0)}
           </Avatar>
           <div>
-            <Title order={3}>{user.first_name} {user.last_name}</Title>
+            <Title order={3}>
+              {user.first_name} {user.last_name}
+            </Title>
             <Group gap="xs">
-              <Badge color={user.is_active ? "green" : "gray"}>
-                {user.is_active ? "Active" : "Inactive"}
-              </Badge>
-              <Badge variant="outline">{user.role_name}</Badge>
+              <Badge color={isActive ? "green" : "gray"}>{user.status}</Badge>
             </Group>
           </div>
         </Group>
@@ -120,7 +123,9 @@ export function UserDetailPage() {
                   Last Login
                 </Text>
                 <Text size="sm">
-                  {user.last_login ? formatDateTime(user.last_login) : "Never"}
+                  {user.last_login_at
+                    ? formatDateTime(user.last_login_at)
+                    : "Never"}
                 </Text>
               </Group>
               <Group justify="space-between">
@@ -140,7 +145,7 @@ export function UserDetailPage() {
                 last_name: user.last_name,
                 email: user.email,
                 role_id: user.role_id,
-                is_active: user.is_active,
+                is_active: isActive,
               }}
               onSubmit={async (v) => {
                 await updateMutation.mutateAsync(v);
@@ -158,13 +163,12 @@ export function UserDetailPage() {
   );
 }
 
-async function AdminChangePasswordForm({ userId }: { userId: string }) {
-  const { useForm } = await import("@mantine/form");
+function AdminChangePasswordForm({ userId }: { userId: string }) {
   const form = useForm({
     initialValues: { new_password: "", confirm_password: "" },
     validate: {
-      new_password: (v) => (v.length < 8 ? "Min 8 characters" : null),
-      confirm_password: (v, vals) =>
+      new_password: (v: string) => (v.length < 8 ? "Min 8 characters" : null),
+      confirm_password: (v: string, vals: any) =>
         v !== vals.new_password ? "Passwords do not match" : null,
     },
   });
@@ -183,7 +187,7 @@ async function AdminChangePasswordForm({ userId }: { userId: string }) {
 
   return (
     <form
-      onSubmit={form.onSubmit((v) =>
+      onSubmit={form.onSubmit((v: any) =>
         mutation.mutate({ new_password: v.new_password }),
       )}
     >

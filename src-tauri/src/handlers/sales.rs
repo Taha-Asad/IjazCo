@@ -150,7 +150,7 @@ pub async fn get_invoice(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<SalesInvoiceWithItems>> {
+) -> Result<impl axum::response::IntoResponse> {
     tracing::debug!(
         user_id = %auth_user.id,
         invoice_id = %id,

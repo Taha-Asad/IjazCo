@@ -21,7 +21,7 @@ use crate::{
     },
     utils::{
         error::{AppError, Result},
-        response::{created, no_content, paginated},
+        response::{created, no_content, paginated, success},
     },
 };
 
@@ -168,7 +168,7 @@ pub async fn get_supplier(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<SupplierWithStats>> {
+) -> Result<impl axum::response::IntoResponse> {
     tracing::debug!(
         user_id = %auth_user.id,
         supplier_id = %id,

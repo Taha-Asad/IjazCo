@@ -7,7 +7,8 @@ export interface Customer {
   city?: string;
   country?: string;
   credit_limit: number;
-  current_balance: number;
+  current_balance?: number;
+  outstanding_balance?: number;
   company_id: string;
   is_active: boolean;
   total_invoices?: number;

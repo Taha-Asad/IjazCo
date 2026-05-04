@@ -50,6 +50,25 @@ export interface AuthUser {
   permissions?: Record<string, string[]>;
 }
 
+export interface User {
+  id: string;
+  company_id: string;
+  role_id: string;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  avatar_url: string | null;
+  status: string;
+  is_email_verified: boolean;
+  last_login_at: string | null;
+  two_factor_enabled: boolean;
+  preferences: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ChangePasswordRequest {
   current_password: string;
   new_password: string;

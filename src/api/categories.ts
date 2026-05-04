@@ -26,8 +26,7 @@ export const categoriesApi = {
   list: (params?: PaginationParams & { parent_id?: string }) =>
     apiClient.get<PaginatedResponse<Category>>("categories", { params }),
 
-  getById: (id: string) =>
-    apiClient.get<ApiResponse<Category>>(`categories/${id}`),
+  getById: (id: string) => apiClient.get<any>(`categories/${id}`),
 
   create: (data: CreateCategoryRequest) =>
     apiClient.post<ApiResponse<Category>>("categories", data),

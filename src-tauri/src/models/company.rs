@@ -186,6 +186,23 @@ impl Company {
             .fetch_all(pool).await
     }
 
+    // ===== LIST PAGINATED =====
+    pub async fn list_paginated_pg(pool: &PgPool, limit: i64, offset: i64) -> Result<Vec<Company>, sqlx::Error> {
+        sqlx::query_as::<Postgres, Company>(
+            "SELECT * FROM companies ORDER BY name LIMIT $1 OFFSET $2"
+        )
+        .bind(limit).bind(offset)
+        .fetch_all(pool).await
+    }
+
+    pub async fn list_paginated_sqlite(pool: &SqlitePool, limit: i64, offset: i64) -> Result<Vec<Company>, sqlx::Error> {
+        sqlx::query_as::<Sqlite, Company>(
+            "SELECT * FROM companies ORDER BY name LIMIT ? OFFSET ?"
+        )
+        .bind(limit).bind(offset)
+        .fetch_all(pool).await
+    }
+
     // ===== DELETE (soft) =====
     pub async fn delete_pg(pool: &PgPool, id: Uuid, user: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE companies SET is_active = false, updated_by = $1, updated_at = NOW() WHERE id = $2")

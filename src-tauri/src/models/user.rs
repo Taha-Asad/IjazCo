@@ -68,6 +68,17 @@ pub enum UserStatus {
     Pending,
 }
 
+impl std::fmt::Display for UserStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserStatus::Active => write!(f, "active"),
+            UserStatus::Inactive => write!(f, "inactive"),
+            UserStatus::Suspended => write!(f, "suspended"),
+            UserStatus::Pending => write!(f, "pending"),
+        }
+    }
+}
+
 // ===== USER MODEL =====
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize, FromRow, ToSchema)]
 pub struct User {
@@ -561,7 +572,7 @@ pub async fn find_by_id_pg(pool: &PgPool, id: Uuid) -> Result<Option<User>, sqlx
         Ok(users)
     }
 
-    
+     
     pub async fn update_sqlite(
         pool: &SqlitePool,
         id: Uuid,
@@ -571,40 +582,40 @@ pub async fn find_by_id_pg(pool: &PgPool, id: Uuid) -> Result<Option<User>, sqlx
         let mut query = String::from(
             "UPDATE users SET updated_by = ?, updated_at = CURRENT_TIMESTAMP"
         );
-        let mut bind_count = 2;
+        let mut bind_count = 1;
         let mut bindings: Vec<String> = vec![];
 
         if let Some(email) = &request.email {
-            query.push_str(&format!(", email = ${}", bind_count));
+            query.push_str(", email = ?");
             bindings.push(email.clone());
-            bind_count += 1;
         }
 
         if let Some(first_name) = &request.first_name {
-            query.push_str(&format!(", first_name = ${}", bind_count));
+            query.push_str(", first_name = ?");
             bindings.push(first_name.clone());
-            bind_count += 1;
         }
 
         if let Some(last_name) = &request.last_name {
-            query.push_str(&format!(", last_name = ${}", bind_count));
+            query.push_str(", last_name = ?");
             bindings.push(last_name.clone());
-            bind_count += 1;
         }
 
         if let Some(phone) = &request.phone {
-            query.push_str(&format!(", phone = ${}", bind_count));
+            query.push_str(", phone = ?");
             bindings.push(phone.clone());
-            bind_count += 1;
         }
 
         if let Some(avatar_url) = &request.avatar_url {
-            query.push_str(&format!(", avatar_url = ${}", bind_count));
+            query.push_str(", avatar_url = ?");
             bindings.push(avatar_url.clone());
-            bind_count += 1;
         }
 
-        query.push_str(&format!(" WHERE id = ${} RETURNING *", bind_count));
+        if let Some(status) = &request.status {
+            query.push_str(", status = ?");
+            bindings.push(status.to_string());
+        }
+
+        query.push_str(" WHERE id = ? RETURNING *");
 
         let mut query_builder = sqlx::query_as::<Sqlite, User>(&query);
         query_builder = query_builder.bind(updated_by);
@@ -629,35 +640,34 @@ pub async fn find_by_id_pg(pool: &PgPool, id: Uuid) -> Result<Option<User>, sqlx
             "UPDATE users SET updated_by = $1, updated_at = CURRENT_TIMESTAMP"
         );
         let mut bind_count = 2;
-        let mut bindings: Vec<String> = vec![];
 
         if let Some(email) = &request.email {
             query.push_str(&format!(", email = ${}", bind_count));
-            bindings.push(email.clone());
             bind_count += 1;
         }
 
         if let Some(first_name) = &request.first_name {
             query.push_str(&format!(", first_name = ${}", bind_count));
-            bindings.push(first_name.clone());
             bind_count += 1;
         }
 
         if let Some(last_name) = &request.last_name {
             query.push_str(&format!(", last_name = ${}", bind_count));
-            bindings.push(last_name.clone());
             bind_count += 1;
         }
 
         if let Some(phone) = &request.phone {
             query.push_str(&format!(", phone = ${}", bind_count));
-            bindings.push(phone.clone());
             bind_count += 1;
         }
 
         if let Some(avatar_url) = &request.avatar_url {
             query.push_str(&format!(", avatar_url = ${}", bind_count));
-            bindings.push(avatar_url.clone());
+            bind_count += 1;
+        }
+
+        if let Some(status) = &request.status {
+            query.push_str(&format!(", status = ${}::user_status", bind_count));
             bind_count += 1;
         }
 
@@ -666,8 +676,23 @@ pub async fn find_by_id_pg(pool: &PgPool, id: Uuid) -> Result<Option<User>, sqlx
         let mut query_builder = sqlx::query_as::<Postgres, User>(&query);
         query_builder = query_builder.bind(updated_by);
 
-        for binding in bindings {
-            query_builder = query_builder.bind(binding);
+        if let Some(email) = &request.email {
+            query_builder = query_builder.bind(email);
+        }
+        if let Some(first_name) = &request.first_name {
+            query_builder = query_builder.bind(first_name);
+        }
+        if let Some(last_name) = &request.last_name {
+            query_builder = query_builder.bind(last_name);
+        }
+        if let Some(phone) = &request.phone {
+            query_builder = query_builder.bind(phone);
+        }
+        if let Some(avatar_url) = &request.avatar_url {
+            query_builder = query_builder.bind(avatar_url);
+        }
+        if let Some(status) = &request.status {
+            query_builder = query_builder.bind(status);
         }
 
         query_builder = query_builder.bind(id);

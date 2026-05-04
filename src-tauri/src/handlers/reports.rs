@@ -400,7 +400,8 @@ pub async fn export_pdf(
         serde_json::json!({
             "report_type": payload.report_type,
             "status": "pending",
-            "message": "PDF generation will be implemented in phase 2"
+            "message": "PDF generation will be implemented in phase 2",
+            "data": payload.data.unwrap_or_default()
         })
     ))
 }
@@ -409,7 +410,10 @@ pub async fn export_pdf(
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct ExportPdfRequest {
     pub report_type: String,
-    pub data: serde_json::Value,
+    pub start_date: Option<chrono::NaiveDate>,
+    pub end_date: Option<chrono::NaiveDate>,
+    pub branch_id: Option<uuid::Uuid>,
+    pub data: Option<serde_json::Value>,
 }
 
 pub fn reports_router() -> axum::Router<Arc<AppState>> {

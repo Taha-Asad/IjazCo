@@ -46,7 +46,21 @@ export function LeadsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (v: any) => leadsApi.create(v),
+    mutationFn: (v: any) => {
+      // Clean up empty strings to undefined for optional fields
+      const data = {
+        ...v,
+        email: v.email || undefined,
+        phone: v.phone || undefined,
+        company_name: v.company_name || undefined,
+        status: v.status || undefined,
+        source: v.source || undefined,
+        estimated_value: v.estimated_value || undefined,
+        description: v.description || undefined,
+        expected_close_date: v.expected_close_date || undefined,
+      };
+      return leadsApi.create(data);
+    },
     onSuccess: (res) => {
       notifications.show({
         title: "Created",

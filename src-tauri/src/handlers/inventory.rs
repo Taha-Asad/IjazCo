@@ -108,7 +108,9 @@ pub async fn list_items(
             } else if let Some(category_id) = params.category_id {
                 InventoryItem::list_by_category_pg(
                     pool,
+                    auth_user.company_id,
                     category_id,
+                    params.active_only,
                     params.pagination.limit(),
                     params.pagination.offset(),
                 ).await?
@@ -116,6 +118,7 @@ pub async fn list_items(
                 InventoryItem::list_by_company_pg(
                     pool,
                     auth_user.company_id,
+                    params.active_only,
                     params.pagination.limit(),
                     params.pagination.offset(),
                 ).await?
@@ -154,6 +157,7 @@ pub async fn list_items(
                 InventoryItem::list_by_company_sqlite(
                     pool,
                     auth_user.company_id,
+                    params.active_only,
                     params.pagination.limit(),
                     params.pagination.offset(),
                 ).await?
@@ -209,7 +213,7 @@ pub async fn get_item(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<InventoryItemWithStock>> {
+) -> Result<impl axum::response::IntoResponse> {
     tracing::debug!(
         user_id = %auth_user.id,
         item_id = %id,
@@ -268,17 +272,17 @@ pub async fn create_item(
     );
     
     // Force company_id to match authenticated user's company
-    payload.company_id = auth_user.company_id;
+    let company_id = auth_user.company_id;
     
     // Check if SKU already exists based on DB type
     let sku_exists = match state.db.as_ref() {
         DbPool::Postgres(pool) => {
-            InventoryItem::find_by_sku_pg(pool, auth_user.company_id, &payload.sku)
+            InventoryItem::find_by_sku_pg(pool, company_id, &payload.sku)
                 .await?
                 .is_some()
         }
         DbPool::Sqlite(pool) => {
-            InventoryItem::find_by_sku_sqlite(pool, auth_user.company_id, &payload.sku)
+            InventoryItem::find_by_sku_sqlite(pool, company_id, &payload.sku)
                 .await?
                 .is_some()
         }
@@ -294,8 +298,8 @@ pub async fn create_item(
     
     // Create item based on DB type
     let item = match state.db.as_ref() {
-        DbPool::Postgres(pool) => InventoryItem::create_pg(pool, payload, auth_user.id).await?,
-        DbPool::Sqlite(pool) => InventoryItem::create_sqlite(pool, payload, auth_user.id).await?,
+        DbPool::Postgres(pool) => InventoryItem::create_pg(pool, payload, company_id, auth_user.id).await?,
+        DbPool::Sqlite(pool) => InventoryItem::create_sqlite(pool, payload, company_id, auth_user.id).await?,
     };
     
     tracing::info!(

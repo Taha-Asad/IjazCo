@@ -7,7 +7,8 @@ export interface User {
   company_id: string;
   role_id: string;
   role_name?: string;
-  is_active: boolean;
+  status: string;
+  is_active?: boolean;
   email_verified: boolean;
   last_login?: string;
   created_at: string;
