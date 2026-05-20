@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::{
     AppState, config::DbPool, middleware::auth::AuthUser, 
-    models::user::{CreateUserRequest, User, UserStatus},
+    models::user::{CreateUserRequest, User, UserStatus, Role},
     utils::{
         error::{AppError, Result},
         jwt::{TokenType, generate_jwt, refresh_access_token},
@@ -223,7 +223,7 @@ pub struct RegisterRequest {
     #[schema(example = "+1-555-1234")]
     pub phone: Option<String>,
 
-    pub role_id: Uuid, // Role ID for the new user (required)
+    pub role_id: Option<Uuid>, // Role ID for the new user (optional, defaults to system role)
 }
 
 // ===== CUSTOM VALIDATION FUNCTIONS =====
@@ -275,18 +275,28 @@ pub async fn register(
         return Err(AppError::DuplicateKey("Username or email already exists".to_string()));
     }
 
-    // 5. Create user logic
-    // IMPORTANT: We use the payload IDs. If they are missing in JSON, 
-    // we use the SEED ID ('...001'), NOT the NIL ID ('...000').
+    // 5. Determine role and company
     let seed_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
     
     let first_name = payload.first_name.clone();
     let last_name = payload.last_name.clone();
     let username = payload.username.clone();
     let email = payload.email.clone();
-    let role_id = payload.role_id;
     let company_id = payload.company_id.unwrap_or(seed_id);
     
+    let role_id = match payload.role_id {
+        Some(id) => id,
+        None => {
+            let role = match state.db.as_ref() {
+                DbPool::Postgres(pool) => Role::find_by_company_default_pg(pool, company_id).await?,
+                DbPool::Sqlite(pool) => Role::find_by_company_default_sqlite(pool, company_id).await?,
+            };
+            match role {
+                Some(r) => r.id,
+                None => seed_id,
+            }
+        }
+    };
 
     let create_request = CreateUserRequest {
         username: username.clone(),
@@ -300,16 +310,16 @@ pub async fn register(
         status: Some("active".to_string()),
     };
     
-    let system_user_id = Some(Uuid::nil());
+    let system_user_id = None;
     
-    match state.db.as_ref() {
+    let created_user = match state.db.as_ref() {
         DbPool::Postgres(pool) => User::create_pg(&pool, create_request, system_user_id).await?,
         DbPool::Sqlite(pool) => User::create_sqlite(&pool, create_request, system_user_id).await?,
     };
 
-    // 6. Build response - use payload data since we know insert succeeded
+    // 6. Build response with actual user data
     let user_info = UserInfo {
-        id: Uuid::new_v4(),
+        id: created_user.id,
         username,
         email,
         first_name,

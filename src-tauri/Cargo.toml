@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+default-run = "tauri-app"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -147,7 +148,7 @@ deadpool-postgres = "0.12.1" # Connection pooling for database efficiency
 # Tower-governor - Rate limiting middleware
 tower_governor = "0.4.2" # Protect against abuse and DDoS
 
-tauri = { version = "2", features = [] }
+tauri = { version = "2.11", features = [] }
 tauri-plugin-opener = "2"
 rust_decimal = { version = "1.41", features = ["serde-float", "std", "maths"] }
 rust_decimal_macros = "1.40"
@@ -181,7 +182,3 @@ panic = "abort"   # Abort on panic for smaller binary
 # Development profile for faster compilation
 opt-level = 0 # No optimization for faster builds
 
-
-[[bin]]
-name = "migrate_leads"
-path = "src/bin/migrate_leads.rs"

@@ -166,10 +166,11 @@ impl Branch {
         request: CreateBranchRequest,
         created_by: Option<Uuid>,
     ) -> Result<Branch, sqlx::Error> {
+        let id = Uuid::new_v4();
         let branch = sqlx::query_as::<Sqlite, Branch>(
             r#"
             INSERT INTO branches (
-                company_id, name, code, address, city, state, country,
+                id, company_id, name, code, address, city, state, country,
                 postal_code, phone, email, manager_name, manager_phone,
                 warehouse_type, storage_capacity, is_active,
                 settings, metadata, created_by, updated_by
@@ -178,6 +179,7 @@ impl Branch {
             RETURNING *
             "#
         )
+        .bind(id)
         .bind(request.company_id)
         .bind(request.name)
         .bind(request.code)

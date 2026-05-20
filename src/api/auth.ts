@@ -23,7 +23,7 @@ export const authApi = {
 
   logout: () => apiClient.post<ApiResponse<null>>("auth/logout"),
 
-  me: () => apiClient.get<ApiResponse<AuthUser>>("auth/me"),
+  me: () => apiClient.get<AuthUser>("auth/me"),
 
   changePassword: (data: ChangePasswordRequest) =>
     apiClient.post<ApiResponse<null>>("auth/change-password", data),

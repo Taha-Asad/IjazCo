@@ -119,17 +119,19 @@ impl Category {
         request: CreateCategoryRequest,
         created_by: Uuid,
     ) -> Result<Category, sqlx::Error> {
+        let id = Uuid::new_v4();
         sqlx::query_as::<Sqlite, Category>(
             r#"
             INSERT INTO categories (
-                company_id, parent_id, code, name, description,
+                id, company_id, parent_id, code, name, description,
                 image_url, sort_order, is_active, metadata,
                 created_by, updated_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING *
             "#
         )
+        .bind(id)
         .bind(request.company_id)
         .bind(request.parent_id)
         .bind(request.code)

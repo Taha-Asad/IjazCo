@@ -50,7 +50,7 @@ export const leadsApi = {
     if (data.company_name && data.company_name.trim()) cleanData.company_name = data.company_name;
     if (data.status && data.status.trim()) cleanData.status = data.status;
     if (data.source && data.source.trim()) cleanData.source = data.source;
-    if (data.estimated_value !== undefined && data.estimated_value !== null && data.estimated_value !== "") cleanData.estimated_value = data.estimated_value;
+    if (data.estimated_value != null) cleanData.estimated_value = data.estimated_value;
     if (data.description && data.description.trim()) cleanData.description = data.description;
     if (data.expected_close_date && data.expected_close_date.trim()) cleanData.expected_close_date = data.expected_close_date;
     return apiClient.post<ApiResponse<Lead>>("leads", cleanData);
@@ -65,7 +65,7 @@ export const leadsApi = {
     if (data.company_name && data.company_name.trim()) cleanData.company_name = data.company_name;
     if (data.status && data.status.trim()) cleanData.status = data.status;
     if (data.source && data.source.trim()) cleanData.source = data.source;
-    if (data.estimated_value !== undefined && data.estimated_value !== null && data.estimated_value !== "") cleanData.estimated_value = data.estimated_value;
+    if (data.estimated_value != null) cleanData.estimated_value = data.estimated_value;
     if (data.description && data.description.trim()) cleanData.description = data.description;
     if (data.expected_close_date && data.expected_close_date.trim()) cleanData.expected_close_date = data.expected_close_date;
     return apiClient.put<ApiResponse<Lead>>(`leads/${id}`, cleanData);

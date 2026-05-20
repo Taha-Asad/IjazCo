@@ -1034,10 +1034,11 @@ impl SalesInvoice {
         let shipping_amount = request.shipping_amount.unwrap_or(Decimal::ZERO);
         let total_amount = subtotal - discount_amount + total_tax + shipping_amount;
         
+        let id = Uuid::new_v4();
         let invoice_sqlite = sqlx::query_as::<Sqlite, SalesInvoiceSqlite>(
             r#"
             INSERT INTO sales_invoices (
-                company_id, branch_id, customer_id, invoice_number,
+                id, company_id, branch_id, customer_id, invoice_number,
                 invoice_date, due_date, status, subtotal, discount_amount,
                 tax_amount, shipping_amount, total_amount, paid_amount,
                 payment_method, payment_reference, shipping_address,
@@ -1045,11 +1046,12 @@ impl SalesInvoice {
             )
             VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?
             )
             RETURNING *
             "#
         )
+        .bind(id)
         .bind(request.company_id)
         .bind(request.branch_id)
         .bind(request.customer_id)

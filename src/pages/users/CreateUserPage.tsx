@@ -22,7 +22,7 @@ export function CreateUserPage() {
         color: "green",
       });
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      navigate(`/users/${res.data.id}`);
+      navigate(`/users/${res.id}`);
     },
     onError: (err: any) => {
       notifications.show({

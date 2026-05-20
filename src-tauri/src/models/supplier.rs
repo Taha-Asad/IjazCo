@@ -475,11 +475,12 @@ impl Supplier {
         created_by: Uuid,
     ) -> Result<Supplier, sqlx::Error> {
     let rating_f64 = request.rating.map(|d| d.to_f64().unwrap_or_default());
+    let id = Uuid::new_v4();
 
         let supplier_sqlite = sqlx::query_as::<Sqlite, SupplierSqlite>(
             r#"
             INSERT INTO suppliers (
-                company_id, supplier_code, name, contact_person, email,
+                id, company_id, supplier_code, name, contact_person, email,
                 phone, website, tax_id, address, city, state, country,
                 postal_code, payment_terms, lead_time_days, rating,
                 is_active, tags, notes, metadata, created_by, updated_by
@@ -491,6 +492,7 @@ impl Supplier {
             RETURNING *
             "#
         )
+        .bind(id)
         .bind(request.company_id)
         .bind(request.supplier_code)
         .bind(request.name)

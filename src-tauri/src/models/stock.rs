@@ -1630,18 +1630,20 @@ impl StockMovement {
         notes: Option<String>,
         created_by: Uuid,
     ) -> Result<StockMovement, sqlx::Error> {
+        let id = Uuid::new_v4();
         let movement_sqlite = sqlx::query_as::<Sqlite, StockMovementSqlite>(
             r#"
             INSERT INTO stock_movements (
-                company_id, item_id, from_branch_id, to_branch_id,
+                id, company_id, item_id, from_branch_id, to_branch_id,
                 movement_type, quantity, unit_cost, reference_type,
                 reference_id, batch_number, serial_numbers, notes,
                 movement_date, created_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
             RETURNING *
             "#
         )
+        .bind(id)
         .bind(company_id)
         .bind(item_id)
         .bind(from_branch_id)

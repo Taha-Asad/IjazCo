@@ -453,10 +453,11 @@ impl InventoryItem {
         company_id: Uuid,
         created_by: Uuid,
     ) -> Result<InventoryItem, sqlx::Error> {
+        let id = Uuid::new_v4();
         let item_sqlite = sqlx::query_as::<Sqlite, InventoryItemSqlite>(
             r#"
             INSERT INTO inventory_items (
-                company_id, category_id, sku, barcode, name, description,
+                id, company_id, category_id, sku, barcode, name, description,
                 brand, model_number, serial_number, unit_of_measure,
                 is_serialized, is_batch_tracked, cost_price, selling_price, msrp,
                 tax_rate, weight, weight_unit, dimensions, reorder_level,
@@ -465,7 +466,7 @@ impl InventoryItem {
                 metadata, created_by, updated_by
             )
             VALUES (
-                ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
                 ?, ?, ?, ?, ?,
                 ?, ?, ?, ?, ?,
@@ -476,6 +477,7 @@ impl InventoryItem {
             RETURNING *
             "#
         )
+        .bind(id)
         .bind(company_id)
         .bind(request.category_id)
         .bind(&request.sku)

@@ -69,7 +69,7 @@ export function LeadsPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       close();
-      navigate(`/leads/${res.data.id}`);
+      navigate(`/leads/${res.id}`);
     },
     onError: (error: any) => {
       notifications.show({

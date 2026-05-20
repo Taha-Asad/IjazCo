@@ -347,10 +347,11 @@ impl ImportOrder {
     ) -> Result<ImportOrder, sqlx::Error> {
         let import_number = Self::generate_import_number_sqlite(pool, request.company_id).await?;
         
+        let id = Uuid::new_v4();
         let import_order_sqlite = sqlx::query_as::<Sqlite, ImportOrderSqlite>(
             r#"
             INSERT INTO import_orders (
-                company_id, po_id, import_number, supplier_id,
+                id, company_id, po_id, import_number, supplier_id,
                 shipment_date, arrival_date, status, shipping_method,
                 tracking_number, container_number, freight_cost,
                 insurance_cost, customs_duty, other_charges, documents,
@@ -363,6 +364,7 @@ impl ImportOrder {
             RETURNING *
             "#
         )
+        .bind(id)
         .bind(request.company_id)
         .bind(request.po_id)
         .bind(&import_number)

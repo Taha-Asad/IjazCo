@@ -300,7 +300,7 @@ impl User {
 
 // inside src/models/user.rs
 
-pub async fn create_sqlite(
+    pub async fn create_sqlite(
         pool: &SqlitePool,
         request: CreateUserRequest,
         created_by: Option<Uuid>
@@ -310,10 +310,6 @@ pub async fn create_sqlite(
         
         let new_id = Uuid::new_v4();
         
-        // Convert to strings explicitly for SQLite TEXT columns  
-        let company_id_str = request.company_id.to_string();
-        let role_id_str = request.role_id.to_string();
-        
         // Use a transaction 
         let mut tx = pool.begin().await?;
         
@@ -322,7 +318,6 @@ pub async fn create_sqlite(
             .execute(&mut *tx)
             .await?;
 
-        // Insert with explicit strings
         sqlx::query(
             r#"
             INSERT INTO users (
@@ -331,12 +326,12 @@ pub async fn create_sqlite(
                 failed_login_attempts, two_factor_enabled, preferences,
                 created_by, updated_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
             "#
         )
-        .bind(new_id.to_string())
-        .bind(&company_id_str)
-        .bind(&role_id_str)
+        .bind(new_id)
+        .bind(request.company_id)
+        .bind(request.role_id)
         .bind(&request.username)
         .bind(&request.email)
         .bind(&password_hash)
@@ -348,8 +343,8 @@ pub async fn create_sqlite(
         .bind(0)
         .bind(false)
         .bind(serde_json::json!({}))
-        .bind(&created_by.map(|u| u.to_string()))
-        .bind(&created_by.map(|u| u.to_string()))
+        .bind(created_by)
+        .bind(created_by)
         .execute(&mut *tx)
         .await?;
         
@@ -951,16 +946,18 @@ impl Role {
         request: CreateRoleRequest,
         created_by: Uuid
     ) -> Result<Role, sqlx::Error> {
+        let id = Uuid::new_v4();
         let role = sqlx::query_as::<Sqlite, Role>(
                 r#"
             INSERT INTO roles (
-                company_id, name, description, role_type,
+                id, company_id, name, description, role_type,
                 permissions, is_system, is_active, created_by, updated_by
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
             "#
             )
+            .bind(id)
             .bind(request.company_id)
             .bind(request.name)
             .bind(request.description)

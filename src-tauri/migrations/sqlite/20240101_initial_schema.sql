@@ -3,7 +3,7 @@
 
 -- ===== COMPANIES TABLE =====
 CREATE TABLE companies (
-    id TEXT PRIMARY KEY NOT NULL,
+    id BLOB NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     code TEXT NOT NULL UNIQUE,
     trade_name TEXT,
@@ -29,16 +29,16 @@ CREATE TABLE companies (
     settings TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT,
-    updated_by TEXT
+    created_by BLOB,
+    updated_by BLOB
 );
 
 CREATE INDEX idx_companies_active ON companies(is_active);
 
 -- ===== ROLES TABLE =====
 CREATE TABLE roles (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
     role_type TEXT NOT NULL CHECK(role_type IN ('admin', 'inventory_manager', 'sales_user', 'import_clerk')),
@@ -47,8 +47,8 @@ CREATE TABLE roles (
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT,
-    updated_by TEXT,
+    created_by BLOB,
+    updated_by BLOB,
     UNIQUE(company_id, name)
 );
 
@@ -57,9 +57,9 @@ CREATE INDEX idx_roles_type ON roles(role_type);
 
 -- ===== USERS TABLE =====
 CREATE TABLE users (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    role_id BLOB NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
     username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
@@ -81,8 +81,8 @@ CREATE TABLE users (
     preferences TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT,
-    updated_by TEXT,
+    created_by BLOB,
+    updated_by BLOB,
     deleted_at TEXT
 );
 
@@ -92,14 +92,14 @@ CREATE INDEX idx_users_username ON users(username);
 
 -- ===== BRANCHES TABLE =====
 CREATE TABLE branches (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     code TEXT NOT NULL,
     name TEXT NOT NULL,
     type TEXT DEFAULT 'warehouse',
     email TEXT,
     phone TEXT,
-    manager_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    manager_id BLOB REFERENCES users(id) ON DELETE SET NULL,
     address TEXT NOT NULL,
     city TEXT NOT NULL,
     state TEXT,
@@ -112,8 +112,8 @@ CREATE TABLE branches (
     settings TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT,
-    updated_by TEXT,
+    created_by BLOB,
+    updated_by BLOB,
     UNIQUE(company_id, code)
 );
 
@@ -121,9 +121,9 @@ CREATE INDEX idx_branches_company ON branches(company_id);
 
 -- ===== CATEGORIES TABLE =====
 CREATE TABLE categories (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    parent_id TEXT REFERENCES categories(id) ON DELETE CASCADE,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    parent_id BLOB REFERENCES categories(id) ON DELETE CASCADE,
     code TEXT NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
@@ -133,8 +133,8 @@ CREATE TABLE categories (
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT,
-    updated_by TEXT,
+    created_by BLOB,
+    updated_by BLOB,
     UNIQUE(company_id, code)
 );
 
@@ -143,9 +143,9 @@ CREATE INDEX idx_categories_parent ON categories(parent_id);
 
 -- ===== INVENTORY ITEMS TABLE =====
 CREATE TABLE inventory_items (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    category_id TEXT REFERENCES categories(id) ON DELETE SET NULL,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    category_id BLOB REFERENCES categories(id) ON DELETE SET NULL,
     sku TEXT NOT NULL,
     barcode TEXT,
     name TEXT NOT NULL,
@@ -177,8 +177,8 @@ CREATE TABLE inventory_items (
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT,
-    updated_by TEXT,
+    created_by BLOB,
+    updated_by BLOB,
     UNIQUE(company_id, sku)
 );
 
@@ -188,10 +188,10 @@ CREATE INDEX idx_inventory_sku ON inventory_items(sku);
 
 -- ===== STOCK TABLE =====
 CREATE TABLE stock (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    item_id TEXT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
-    branch_id TEXT NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    item_id BLOB NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+    branch_id BLOB NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
     quantity_on_hand INTEGER NOT NULL DEFAULT 0,
     quantity_allocated INTEGER NOT NULL DEFAULT 0,
     quantity_available INTEGER NOT NULL DEFAULT 0,
@@ -210,11 +210,11 @@ CREATE INDEX idx_stock_branch ON stock(branch_id);
 
 -- ===== STOCK MOVEMENTS TABLE =====
 CREATE TABLE stock_movements (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    item_id TEXT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
-    from_branch_id TEXT REFERENCES branches(id) ON DELETE SET NULL,
-    to_branch_id TEXT REFERENCES branches(id) ON DELETE SET NULL,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    item_id BLOB NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+    from_branch_id BLOB REFERENCES branches(id) ON DELETE SET NULL,
+    to_branch_id BLOB REFERENCES branches(id) ON DELETE SET NULL,
     movement_type TEXT NOT NULL CHECK(movement_type IN ('purchase', 'sale', 'transfer', 'adjustment', 'return', 'damage', 'loss')),
     quantity INTEGER NOT NULL,
     unit_cost REAL,
@@ -225,7 +225,7 @@ CREATE TABLE stock_movements (
     notes TEXT,
     movement_date TEXT NOT NULL DEFAULT (datetime('now')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT
+    created_by BLOB NOT NULL REFERENCES users(id) ON DELETE RESTRICT
 );
 
 CREATE INDEX idx_movements_company ON stock_movements(company_id);
@@ -234,8 +234,8 @@ CREATE INDEX idx_movements_date ON stock_movements(movement_date);
 
 -- ===== CUSTOMERS TABLE =====
 CREATE TABLE customers (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     customer_code TEXT NOT NULL,
     name TEXT NOT NULL,
     contact_person TEXT,
@@ -262,8 +262,8 @@ CREATE TABLE customers (
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT,
-    updated_by TEXT,
+    created_by BLOB,
+    updated_by BLOB,
     UNIQUE(company_id, customer_code)
 );
 
@@ -271,8 +271,8 @@ CREATE INDEX idx_customers_company ON customers(company_id);
 
 -- ===== SUPPLIERS TABLE =====
 CREATE TABLE suppliers (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     supplier_code TEXT NOT NULL,
     name TEXT NOT NULL,
     contact_person TEXT,
@@ -294,8 +294,8 @@ CREATE TABLE suppliers (
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT,
-    updated_by TEXT,
+    created_by BLOB,
+    updated_by BLOB,
     UNIQUE(company_id, supplier_code)
 );
 
@@ -303,10 +303,10 @@ CREATE INDEX idx_suppliers_company ON suppliers(company_id);
 
 -- ===== SALES INVOICES TABLE =====
 CREATE TABLE sales_invoices (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    branch_id TEXT NOT NULL REFERENCES branches(id) ON DELETE RESTRICT,
-    customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE RESTRICT,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    branch_id BLOB NOT NULL REFERENCES branches(id) ON DELETE RESTRICT,
+    customer_id BLOB NOT NULL REFERENCES customers(id) ON DELETE RESTRICT,
     invoice_number TEXT NOT NULL,
     invoice_date TEXT NOT NULL DEFAULT (date('now')),
     due_date TEXT,
@@ -326,8 +326,8 @@ CREATE TABLE sales_invoices (
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    updated_by TEXT,
+    created_by BLOB NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by BLOB,
     UNIQUE(company_id, invoice_number)
 );
 
@@ -338,9 +338,9 @@ CREATE INDEX idx_invoices_status ON sales_invoices(status);
 
 -- ===== SALES INVOICE ITEMS TABLE =====
 CREATE TABLE sales_invoice_items (
-    id TEXT PRIMARY KEY NOT NULL,
-    invoice_id TEXT NOT NULL REFERENCES sales_invoices(id) ON DELETE CASCADE,
-    item_id TEXT NOT NULL REFERENCES inventory_items(id) ON DELETE RESTRICT,
+    id BLOB NOT NULL PRIMARY KEY,
+    invoice_id BLOB NOT NULL REFERENCES sales_invoices(id) ON DELETE CASCADE,
+    item_id BLOB NOT NULL REFERENCES inventory_items(id) ON DELETE RESTRICT,
     description TEXT,
     quantity INTEGER NOT NULL,
     unit_price REAL NOT NULL,
@@ -358,10 +358,10 @@ CREATE INDEX idx_invoice_items_invoice ON sales_invoice_items(invoice_id);
 
 -- ===== PURCHASE ORDERS TABLE =====
 CREATE TABLE purchase_orders (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    branch_id TEXT NOT NULL REFERENCES branches(id) ON DELETE RESTRICT,
-    supplier_id TEXT NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    branch_id BLOB NOT NULL REFERENCES branches(id) ON DELETE RESTRICT,
+    supplier_id BLOB NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
     po_number TEXT NOT NULL,
     po_date TEXT NOT NULL DEFAULT (date('now')),
     expected_delivery_date TEXT,
@@ -379,8 +379,8 @@ CREATE TABLE purchase_orders (
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    updated_by TEXT,
+    created_by BLOB NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by BLOB,
     UNIQUE(company_id, po_number)
 );
 
@@ -390,9 +390,9 @@ CREATE INDEX idx_purchase_orders_status ON purchase_orders(status);
 
 -- ===== PURCHASE ORDER ITEMS TABLE =====
 CREATE TABLE purchase_order_items (
-    id TEXT PRIMARY KEY NOT NULL,
-    po_id TEXT NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
-    item_id TEXT NOT NULL REFERENCES inventory_items(id) ON DELETE RESTRICT,
+    id BLOB NOT NULL PRIMARY KEY,
+    po_id BLOB NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+    item_id BLOB NOT NULL REFERENCES inventory_items(id) ON DELETE RESTRICT,
     description TEXT,
     quantity_ordered INTEGER NOT NULL,
     quantity_received INTEGER DEFAULT 0,
@@ -407,11 +407,11 @@ CREATE INDEX idx_po_items_po ON purchase_order_items(po_id);
 
 -- ===== IMPORT ORDERS TABLE =====
 CREATE TABLE import_orders (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    po_id TEXT REFERENCES purchase_orders(id) ON DELETE SET NULL,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    po_id BLOB REFERENCES purchase_orders(id) ON DELETE SET NULL,
     import_number TEXT NOT NULL,
-    supplier_id TEXT NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
+    supplier_id BLOB NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
     shipment_date TEXT,
     arrival_date TEXT,
     customs_clearance_date TEXT,
@@ -429,8 +429,8 @@ CREATE TABLE import_orders (
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    updated_by TEXT,
+    created_by BLOB NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by BLOB,
     UNIQUE(company_id, import_number)
 );
 
@@ -438,9 +438,9 @@ CREATE INDEX idx_import_orders_company ON import_orders(company_id);
 
 -- ===== AUDIT LOGS TABLE =====
 CREATE TABLE audit_logs (
-    id TEXT PRIMARY KEY NOT NULL,
-    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    id BLOB NOT NULL PRIMARY KEY,
+    company_id BLOB NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    user_id BLOB REFERENCES users(id) ON DELETE SET NULL,
     action TEXT NOT NULL CHECK(action IN ('CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'EXPORT', 'IMPORT')),
     entity_type TEXT NOT NULL,
     entity_id TEXT,

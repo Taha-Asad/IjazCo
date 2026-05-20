@@ -12,11 +12,8 @@ function App() {
       // Always refresh user data from API to ensure company_id is present
       authApi
         .me()
-        .then((res: any) => {
-          // ApiResponse<AuthUser> format: { status, message, data, timestamp }
-          if (res.data) {
-            setUser(res.data);
-          }
+        .then((user) => {
+          setUser(user);
           setLoading(false);
         })
         .catch(() => {

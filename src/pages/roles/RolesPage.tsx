@@ -38,11 +38,11 @@ export function RolesPage() {
   const { isLoading: userLoading } = useQuery({
     queryKey: ["currentUser"],
     queryFn: async () => {
-      const res = await authApi.me();
-      if (res.data?.company_id) {
-        useAuthStore.getState().setUser(res.data);
+      const userData = await authApi.me();
+      if (userData.company_id) {
+        useAuthStore.getState().setUser(userData);
       }
-      return res.data;
+      return userData;
     },
     enabled: !!user && !user?.company_id,
   });
@@ -72,8 +72,7 @@ export function RolesPage() {
     mutationFn: (values: any) => {
       if (!user?.company_id) {
         // Try to get fresh user data
-        return authApi.me().then((res) => {
-          const freshUser = res.data;
+        return authApi.me().then((freshUser) => {
           if (!freshUser?.company_id) {
             throw new Error("Company ID not found. Please log in again.");
           }

@@ -656,10 +656,11 @@ impl PurchaseOrder {
             .await?
         };
         
+        let id = Uuid::new_v4();
         let po_sqlite = sqlx::query_as::<Sqlite, PurchaseOrderSqlite>(
             r#"
             INSERT INTO purchase_orders (
-                company_id, branch_id, supplier_id, po_number, po_date,
+                id, company_id, branch_id, supplier_id, po_number, po_date,
                 expected_delivery_date, status, subtotal, discount_amount,
                 tax_amount, shipping_amount, total_amount, currency,
                 exchange_rate, payment_terms, shipping_address, notes,
@@ -667,11 +668,12 @@ impl PurchaseOrder {
             )
             VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?
             )
             RETURNING *
             "#
         )
+        .bind(id)
         .bind(request.company_id)
         .bind(request.branch_id)
         .bind(request.supplier_id)

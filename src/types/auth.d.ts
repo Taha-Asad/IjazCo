@@ -28,7 +28,7 @@ export interface RegisterRequest {
   company_name?: string;
   company_id?: string;
   phone?: string;
-  role_id: string;
+  role_id?: string;
 }
 
 export interface AuthTokens {

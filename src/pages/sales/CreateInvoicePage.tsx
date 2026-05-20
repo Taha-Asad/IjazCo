@@ -19,7 +19,7 @@ export function CreateInvoicePage() {
         color: "green",
       });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
-      navigate(`/sales/${res.data.id}`);
+      navigate(`/sales/${res.id}`);
     },
     onError: (err: any) => {
       notifications.show({

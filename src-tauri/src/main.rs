@@ -1,7 +1,8 @@
-// src/main.rs
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::{cors::CorsLayer, trace::TraceLayer, compression::CompressionLayer};
-use tower::make::Shared;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 use dotenvy::dotenv;
@@ -19,21 +20,12 @@ use tauri_app_lib::{
 )]
 struct ApiDoc;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    dotenv().ok();
-    
-    tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-    
-    info!("Starting ERP Backend Server...");
-    
-    // Debug: check env loading
+async fn initialize_app_state() -> Result<Arc<AppState>, Box<dyn std::error::Error>> {
+    info!("Initializing ERP Backend Server...");
+
     let use_postgres_env = std::env::var("USE_POSTGRES").unwrap_or_default();
     info!("USE_POSTGRES env value: '{}'", use_postgres_env);
-    
+
     let app_config = AppConfig {
         env: std::env::var("RUST_ENV").unwrap_or_else(|_| "development".to_string()),
         jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret".to_string()),
@@ -41,121 +33,122 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         use_postgres: std::env::var("USE_POSTGRES").unwrap_or_default() == "true",
         pg_database_url: std::env::var("PG_DATABASE_URL").unwrap_or_default(),
         sqlite_database_url: std::env::var("SQLITE_DATABASE_URL")
-            .unwrap_or_else(|_| "sqlite:erp.db?mode=rwc".to_string()),
+            .unwrap_or_else(|_| "sqlite:../erp.db?mode=rwc".to_string()),
     };
-    
-    let app_state = AppState::new(app_config).await;
-    
-    // Run migrations
-// In src/main.rs, update the migration section:
 
-// inside async fn main() 
-match app_state.db.as_ref() {
-    DbPool::Postgres(pool) => {
-        // Try to run migrations, but don't fail if tables exist
-        match sqlx::migrate!("./migrations/postgres").run(pool).await {
-            Ok(_) => info!("Migrations completed."),
-            Err(e) => {
-                if e.to_string().contains("already exists") {
-                    info!("Tables already exist, skipping migrations...");
-                } else {
-                    return Err(e.into());
+    let app_state = Arc::new(AppState::new(app_config).await);
+
+    let seed_id = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+
+    match app_state.db.as_ref() {
+        DbPool::Postgres(pool) => {
+            match sqlx::migrate!("./migrations/postgres").run(pool).await {
+                Ok(_) => info!("Migrations completed."),
+                Err(e) => {
+                    if e.to_string().contains("already exists") {
+                        info!("Tables already exist, skipping migrations...");
+                    } else {
+                        return Err(e.into());
+                    }
                 }
             }
+            sqlx::query("ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_user_id_fkey")
+                .execute(pool).await?;
+            info!("Ensuring seed data exists...");
+            let mut tx = pool.begin().await?;
+            sqlx::query(r#"
+                INSERT INTO companies (id, name, email, country, is_active)
+                VALUES ($1, 'Seed Co', 'seed@test.com', 'USA', true)
+                ON CONFLICT(id) DO NOTHING
+            "#).bind(seed_id).execute(&mut *tx).await?;
+            sqlx::query(r#"
+                INSERT INTO roles (id, company_id, name, role_type, permissions, is_system, is_active)
+                VALUES ($1, $2, 'Admin', 'admin', '{}', true, true)
+                ON CONFLICT(id) DO NOTHING
+            "#).bind(seed_id).bind(seed_id).execute(&mut *tx).await?;
+            sqlx::query(r#"
+                INSERT INTO branches (id, company_id, code, name, address, city, country, is_active)
+                VALUES ($1, $2, 'MAIN', 'Main Warehouse', '123 Main St', 'New York', 'USA', true)
+                ON CONFLICT(id) DO NOTHING
+            "#).bind(seed_id).bind(seed_id).execute(&mut *tx).await?;
+            let password_hash = tauri_app_lib::utils::password::hash_password("admin123").unwrap_or_default();
+            sqlx::query(r#"
+                INSERT INTO users (id, company_id, role_id, username, email, password_hash, first_name, last_name, status)
+                VALUES ($1, $2, $3, 'admin', 'admin@erp.com', $4, 'Admin', 'User', 'active')
+                ON CONFLICT(id) DO NOTHING
+            "#).bind(seed_id).bind(seed_id).bind(seed_id).bind(password_hash).execute(&mut *tx).await?;
+            tx.commit().await?;
+            info!("Seed data verified.");
         }
-        // Drop problematic FK constraint if it exists
-        sqlx::query("ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_user_id_fkey")
-            .execute(pool).await?;
-        info!("Ensuring seed data exists...");
-        let mut tx = pool.begin().await?;
-        // Seed company
-        sqlx::query(r#"
-            INSERT INTO companies (id, name, email, country, is_active)
-            VALUES ('00000000-0000-0000-0000-000000000001', 'Seed Co', 'seed@test.com', 'USA', true)
-            ON CONFLICT(id) DO NOTHING
-        "#).execute(&mut *tx).await?;
-        // Seed role
-        sqlx::query(r#"
-            INSERT INTO roles (id, company_id, name, role_type, permissions, is_system, is_active)
-            VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Admin', 'admin', '{}', true, true)
-            ON CONFLICT(id) DO NOTHING
-        "#).execute(&mut *tx).await?;
-        // Seed branch 
-        sqlx::query(r#"
-            INSERT INTO branches (id, company_id, code, name, address, city, country, is_active)
-            VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'MAIN', 'Main Warehouse', '123 Main St', 'New York', 'USA', true)
-            ON CONFLICT(id) DO NOTHING
-        "#).execute(&mut *tx).await?;
-        // Seed admin user (password: admin123)
-        let password_hash = tauri_app_lib::utils::password::hash_password("admin123").unwrap_or_default();
-        sqlx::query(r#"
-            INSERT INTO users (id, company_id, role_id, username, email, password_hash, first_name, last_name, status)
-            VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'admin', 'admin@erp.com', $1, 'Admin', 'User', 'active')
-            ON CONFLICT(id) DO NOTHING
-        "#).bind(password_hash).execute(&mut *tx).await?;
-        tx.commit().await?;
-        info!("Seed data verified.");
+        DbPool::Sqlite(pool) => {
+            sqlx::migrate!("./migrations/sqlite").run(pool).await?;
+            info!("Ensuring seed data exists...");
+            let mut tx = pool.begin().await?;
+            sqlx::query(r#"
+                INSERT INTO companies (id, name, code, email, country, is_active)
+                VALUES (?1, 'Seed Co', 'SEED01', 'seed@test.com', 'USA', 1)
+                ON CONFLICT(id) DO NOTHING;
+            "#).bind(seed_id).execute(&mut *tx).await?;
+            sqlx::query(r#"
+                INSERT INTO roles (id, company_id, name, role_type, permissions, is_system, is_active)
+                VALUES (?1, ?2, 'Admin', 'admin', '{}', 1, 1)
+                ON CONFLICT(id) DO NOTHING;
+            "#).bind(seed_id).bind(seed_id).execute(&mut *tx).await?;
+            sqlx::query(r#"
+                INSERT INTO branches (id, company_id, code, name, address, city, country, is_active)
+                VALUES (?1, ?2, 'MAIN', 'Main Warehouse', '123 Main St', 'New York', 'USA', 1)
+                ON CONFLICT(id) DO NOTHING;
+            "#).bind(seed_id).bind(seed_id).execute(&mut *tx).await?;
+            let password_hash = tauri_app_lib::utils::password::hash_password("admin123").unwrap_or_default();
+            sqlx::query(r#"
+                INSERT INTO users (id, company_id, role_id, username, email, password_hash, first_name, last_name, status)
+                VALUES (?1, ?2, ?3, 'admin', 'admin@erp.com', ?4, 'Admin', 'User', 'active')
+                ON CONFLICT(id) DO NOTHING;
+            "#).bind(seed_id).bind(seed_id).bind(seed_id).bind(password_hash).execute(&mut *tx).await?;
+            tx.commit().await?;
+            info!("Seed data verified.");
+        }
     }
-    DbPool::Sqlite(pool) => {
-// inside src/main.rs -> DbPool::Sqlite(pool) arm
-sqlx::migrate!("./migrations/sqlite").run(pool).await?;
 
-info!("Ensuring seed data exists...");
-// We use a single transaction to ensure both exist together
-let mut tx = pool.begin().await?;
-
-// Use simple INSERT statements without complex columns to ensure they pass
-sqlx::query(r#"
-    INSERT INTO companies (id, name, code, email, country, is_active)
-    VALUES ('00000000-0000-0000-0000-000000000001', 'Seed Co', 'SEED01', 'seed@test.com', 'USA', 1)
-    ON CONFLICT(id) DO NOTHING;
-"#).execute(&mut *tx).await?;
-
-sqlx::query(r#"
-    INSERT INTO roles (id, company_id, name, role_type, permissions, is_system, is_active)
-    VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Admin', 'admin', '{}', 1, 1)
-    ON CONFLICT(id) DO NOTHING;
-"#).execute(&mut *tx).await?;
-
-sqlx::query(r#"
-    INSERT INTO branches (id, company_id, code, name, address, city, country, is_active)
-    VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'MAIN', 'Main Warehouse', '123 Main St', 'New York', 'USA', 1)
-    ON CONFLICT(id) DO NOTHING;
-"#).execute(&mut *tx).await?;
-
-let password_hash = tauri_app_lib::utils::password::hash_password("admin123").unwrap_or_default();
-sqlx::query(r#"
-    INSERT INTO users (id, company_id, role_id, username, email, password_hash, first_name, last_name, status)
-    VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'admin', 'admin@erp.com', ?, 'Admin', 'User', 'active')
-    ON CONFLICT(id) DO NOTHING;
-"#).bind(password_hash).execute(&mut *tx).await?;
-
-tx.commit().await?;
-info!("Seed data verified.");
-    }
+    Ok(app_state)
 }
-    
-    let state = Arc::new(app_state);
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenv().ok();
+
+    tracing_subscriber::registry()
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    let app_state = initialize_app_state().await?;
+
+    let state = app_state.clone();
     let port: u16 = std::env::var("PORT").unwrap_or_else(|_| "8000".to_string()).parse()?;
-    
-    let app= create_router(state.clone())
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+
+    let app = create_router(state.clone())
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .layer(CompressionLayer::new())
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());
-    
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    info!("Server starting on http://{}", addr);
-    
-let listener = tokio::net::TcpListener::bind(&addr).await?;
-axum::serve(listener, app).await?;
-    
-    Ok(())
-}
 
-async fn shutdown_signal() {
-    use tokio::signal;
-    tokio::select! {
-        _ = signal::ctrl_c() => info!("Shutting down..."),
-    }
+    info!("API server starting on http://{}", addr);
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+
+    tauri::Builder::default()
+        .setup(move |_app| {
+            info!("Tauri app started, launching API server...");
+            tauri::async_runtime::spawn(async move {
+                axum::serve(listener, app).await.unwrap_or_else(|e| {
+                    eprintln!("API server error: {}", e);
+                });
+            });
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+
+    Ok(())
 }

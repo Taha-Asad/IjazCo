@@ -60,7 +60,6 @@ export function RegisterPage() {
         first_name: values.first_name,
         last_name: values.last_name,
         company_name: values.company_name || undefined,
-        role_id: "", // Will be set by backend for new registrations
       });
 
       notifications.show({

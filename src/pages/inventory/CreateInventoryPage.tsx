@@ -22,7 +22,7 @@ export function CreateInventoryPage() {
         color: "green",
       });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      navigate(`/inventory/${res.data.id}`);
+      navigate(`/inventory/${res.id}`);
     },
     onError: (error: any) => {
       notifications.show({
